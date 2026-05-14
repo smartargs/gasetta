@@ -1,5 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useGasettaV3 } from '../lib/v3Context';
+import { useThreadComments, type RawComment } from '../lib/threadComments';
 import {
   AITag,
   ConsensusChip,
@@ -43,6 +44,12 @@ export function ThreadPage() {
 
   const founderRecord = t.founder ? D.founders[t.founder] ?? null : null;
   const founderName = founderRecord?.name ?? null;
+  const isCommentable = t.type === 'issue' || t.type === 'pr' || t.type === 'discussion';
+  const { data: comments, isLoading: commentsLoading } = useThreadComments(
+    isCommentable ? t.repo : null,
+    isCommentable ? t.type : undefined,
+    isCommentable ? t.number : undefined,
+  );
 
   return (
     <div className="thread">
@@ -137,7 +144,79 @@ export function ThreadPage() {
         </div>
       </div>
 
-      {/* Raw thread loading is deferred — the v3 design shows summaries first. */}
+      {isCommentable && <RawThread comments={comments} loading={commentsLoading} />}
+    </div>
+  );
+}
+
+function RawThread({
+  comments,
+  loading,
+}: {
+  comments: RawComment[] | undefined;
+  loading: boolean;
+}) {
+  const count = comments?.length ?? 0;
+  return (
+    <div className="raw-thread">
+      <h3>Raw thread{count > 0 ? ` · ${count} comments` : ''}</h3>
+      {loading && count === 0 ? (
+        <div style={{ padding: '12px 0', color: 'var(--ink-4)', fontSize: 13 }}>
+          Loading comments…
+        </div>
+      ) : count === 0 ? (
+        <div style={{ padding: '12px 0', color: 'var(--ink-4)', fontSize: 13 }}>
+          No comments on this thread yet.
+        </div>
+      ) : (
+        comments!.map((c, i) => <Comment key={i} c={c} />)
+      )}
+    </div>
+  );
+}
+
+function Comment({ c }: { c: RawComment }) {
+  return (
+    <div className={`comment ${c.founder ? 'is-founder' : ''}`}>
+      <div className={`avatar ${c.founder ? 'founder' : ''}`}>{c.initials}</div>
+      <div>
+        <div className="hd">
+          <span className="name">{c.name}</span>
+          <span className="login">@{c.login}</span>
+          {c.role === 'core' && !c.founder && (
+            <span
+              style={{
+                fontSize: 10,
+                color: 'var(--ink-3)',
+                background: 'var(--bg-tint)',
+                padding: '1px 6px',
+                borderRadius: 4,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Core
+            </span>
+          )}
+          {c.isAnswer && (
+            <span
+              style={{
+                fontSize: 10,
+                color: 'var(--open-fg)',
+                background: 'var(--open-bg)',
+                padding: '1px 6px',
+                borderRadius: 4,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Answer
+            </span>
+          )}
+          <span className="when">{c.when}</span>
+        </div>
+        <div className="body">{c.body}</div>
+      </div>
     </div>
   );
 }
