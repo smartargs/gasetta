@@ -1,8 +1,14 @@
 # Gasetta
 
+**Live at [gasetta.com](https://www.gasetta.com)**
+
 > A live, AI-summarised feed of the [`neo-project`](https://github.com/orgs/neo-project/repositories)
 > GitHub org — consensus chips, founder markers, and the state of every
 > active thread, refreshed every few hours.
+
+<p align="center">
+  <img src="./docs/screenshots/feed.png" alt="Gasetta feed view — ranked cards with consensus chips, sentiment, and founder markers" width="900" />
+</p>
 
 Gasetta reads the Neo blockchain's GitHub organisation every four hours
 and turns the raw firehose — issues, pull requests, discussions, releases,
@@ -59,6 +65,10 @@ flowchart TB
 Each card opens to a **thread page** with the full consensus block: a
 multi-sentence summary, the consensus chip, key points, decisions reached
 in the thread, and a pulled-out founder quote when applicable.
+
+<p align="center">
+  <img src="./docs/screenshots/thread.png" alt="Gasetta thread page — full consensus block with key points, decisions, and a founder pull-quote" width="700" />
+</p>
 
 ---
 
@@ -247,10 +257,11 @@ no `--no-verify`.
 
 ## Not affiliated with Neo
 
-Gasetta is an independent, community-built project. It is not affiliated
-with Neo Global Development, the Neo Foundation, or any official Neo
-entity. AI summaries are best-effort and may contain errors — click
-through to GitHub to verify anything material.
+Gasetta is an independent, community-built project running at
+[gasetta.com](https://www.gasetta.com). It is not affiliated with Neo
+Global Development, the Neo Foundation, or any official Neo entity. AI
+summaries are best-effort and may contain errors — click through to
+GitHub to verify anything material.
 
 ---
 
