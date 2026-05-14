@@ -23,6 +23,7 @@ import {
   fetchPendingReleases,
   markItemError,
   markReleaseError,
+  markReleaseSkipped,
   recordLlmCall,
   upsertOrgDigest,
   writeItemSummary,
@@ -130,6 +131,7 @@ Deno.serve(async (req) => {
     items_summarized: 0,
     items_errored: 0,
     releases_summarized: 0,
+    releases_skipped: 0,
     releases_errored: 0,
     org_digest_written: false,
     total_cost_usd: 0,
@@ -170,6 +172,14 @@ Deno.serve(async (req) => {
   const pendingReleases = await fetchPendingReleases(db, RELEASE_LIMIT);
   console.log(`[summarize] ${pendingReleases.length} pending releases`);
   await pool(pendingReleases, ITEM_CONCURRENCY, async (rel) => {
+    // Cheap pre-flight: skip releases that are pure dependabot/noise — no LLM
+    // call, no error. The UI already falls back to the body slice, so the user
+    // sees what GitHub itself shows. Saves tokens and keeps the digest signal-y.
+    if (isReleaseNoise(rel.body)) {
+      await markReleaseSkipped(db, rel.id);
+      result.releases_skipped++;
+      return;
+    }
     try {
       const res = await openai.chatJSON({
         model: MODEL_RELEASE,
@@ -576,4 +586,31 @@ async function loadFounderActivity(
     });
   }
   return flat.slice(0, 10);
+}
+
+/**
+ * True when a release body is mostly auto-generated noise — dependabot bumps,
+ * empty, or trivial. A "summary" of such content is either misleading (the
+ * model fabricates significance) or useless ("Routine dependency updates").
+ * Skip them; the UI falls back to a body slice that already conveys the
+ * shape ("Bump X from Y to Z by @dependabot[bot]").
+ */
+function isReleaseNoise(body: string | null): boolean {
+  const b = (body ?? '').trim();
+  if (b.length < 80) return true; // sub-trivial body
+
+  const lines = b
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return true;
+
+  const bumpLines = lines.filter(
+    (l) =>
+      /\bbump\b.+\bfrom\b.+\bto\b/i.test(l) ||
+      l.toLowerCase().includes('@dependabot'),
+  ).length;
+
+  // More than half the body is bump-bot → noise.
+  return bumpLines / lines.length > 0.5;
 }

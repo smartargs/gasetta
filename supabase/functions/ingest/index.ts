@@ -24,13 +24,12 @@
 import { createServiceClient } from '../_shared/db.ts';
 import {
   closeRun,
-  getWatermark,
   markPendingIfMaterialDiscussion,
   markPendingIfMaterialIssue,
   markPendingIfMaterialPullRequest,
   openRun,
   reapStaleRuns,
-  setWatermark,
+  setRepoWatermark,
   upsertCommit,
   upsertDiscussion,
   upsertDiscussionComment,
@@ -51,7 +50,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 const ORG = Deno.env.get('GASETTA_ORG') ?? 'neo-project';
 const BOOTSTRAP_DAYS = Number(Deno.env.get('GASETTA_BOOTSTRAP_DAYS') ?? '30');
-const WATERMARK_KEY = 'org_repos';
 // Cap per-run work so we never blow the function timeout. Tune later.
 const MAX_REPOS_PER_RUN = Number(Deno.env.get('GASETTA_MAX_REPOS_PER_RUN') ?? '60');
 // Bounded parallelism across repos. GitHub's quota is a per-hour budget
@@ -79,14 +77,17 @@ Deno.serve(async (_req) => {
   const reaped = await reapStaleRuns(db);
   if (reaped > 0) console.log(`reaped ${reaped} stale running run(s)`);
 
-  // ── window ──
-  const windowEnd = new Date().toISOString();
-  const lastWatermark = await getWatermark(db, WATERMARK_KEY);
-  const windowStart =
-    lastWatermark ??
-    new Date(Date.now() - BOOTSTRAP_DAYS * 86_400_000).toISOString();
+  // Each repo carries its own `last_ingested_at`. We pick that up *inside*
+  // ingestOneRepo so a wall-clock-killed worker leaves already-finished repos
+  // checkpointed. The run row's window bounds reflect the overall span this
+  // invocation might touch — purely diagnostic, not a watermark.
+  const invocationStart = new Date().toISOString();
+  const bootstrapStart = new Date(Date.now() - BOOTSTRAP_DAYS * 86_400_000).toISOString();
 
-  const runId = await openRun(db, { window_start: windowStart, window_end: windowEnd });
+  const runId = await openRun(db, {
+    window_start: bootstrapStart,
+    window_end: invocationStart,
+  });
   let reposSeen = 0;
   let itemsIngested = 0;
 
@@ -94,23 +95,41 @@ Deno.serve(async (_req) => {
     const founders = await loadFoundersIndex(db);
 
     // ── repos ──
+    // Sort: stalest watermark first, then any GitHub repos we've never seen
+    // (no DB row yet). This lets follow-up invocations finish backfills
+    // predictably — the worker spends its budget on repos that actually
+    // need it.
     const allRepos = await gh.listOrgRepos(ORG);
-    const targets = allRepos
-      .filter((r) => !r.archived && !r.fork)
-      .slice(0, MAX_REPOS_PER_RUN);
+    const live = allRepos.filter((r) => !r.archived && !r.fork);
+    const { data: existingRows } = await db
+      .from('repos')
+      .select('github_id, last_ingested_at')
+      .returns<{ github_id: number; last_ingested_at: string | null }[]>();
+    const wmByGhId = new Map<number, string | null>();
+    for (const row of existingRows ?? []) wmByGhId.set(row.github_id, row.last_ingested_at);
+    const sorted = [...live].sort((a, b) => {
+      const aw = wmByGhId.get(a.id) ?? null;
+      const bw = wmByGhId.get(b.id) ?? null;
+      // null (never ingested) sorts before any real watermark.
+      if (aw === null && bw === null) return 0;
+      if (aw === null) return -1;
+      if (bw === null) return 1;
+      return aw < bw ? -1 : aw > bw ? 1 : 0;
+    });
+    const targets = sorted.slice(0, MAX_REPOS_PER_RUN);
 
     console.log(
-      `[ingest] processing ${targets.length} repos with concurrency ${REPO_CONCURRENCY}`,
+      `[ingest] processing ${targets.length} repos (stalest first) ` +
+        `with concurrency ${REPO_CONCURRENCY}`,
     );
     const perRepoResults = await pool(targets, REPO_CONCURRENCY, (r) =>
-      ingestOneRepo(db, gh, runId, founders, windowStart, r),
+      ingestOneRepo(db, gh, runId, founders, bootstrapStart, r),
     );
     for (const r of perRepoResults) {
       reposSeen += r.reposSeen;
       itemsIngested += r.itemsIngested;
     }
 
-    await setWatermark(db, WATERMARK_KEY, windowEnd);
     await closeRun(db, runId, 'ok', {
       repos_seen: reposSeen,
       items_ingested: itemsIngested,
@@ -122,8 +141,7 @@ Deno.serve(async (_req) => {
         run_id: runId,
         repos_seen: reposSeen,
         items_ingested: itemsIngested,
-        window_start: windowStart,
-        window_end: windowEnd,
+        invocation_start: invocationStart,
       }),
       { status: 200, headers: { 'content-type': 'application/json' } },
     );
@@ -151,13 +169,22 @@ async function ingestOneRepo(
   gh: GitHubClient,
   runId: number,
   founders: FoundersIndex,
-  windowStart: string,
+  bootstrapStart: string,
   r: GhRepo,
 ): Promise<{ reposSeen: number; itemsIngested: number }> {
   let itemsIngested = 0;
+  // Mark the moment we *start* this repo. We advance the per-repo watermark to
+  // this value only after the whole pipeline finishes — so any error short of
+  // a successful return leaves the watermark untouched, and the next
+  // invocation re-pulls from the same point.
+  const repoWindowEnd = new Date().toISOString();
   try {
     const repo = await upsertRepo(db, r);
     const [owner, name] = r.full_name.split('/');
+    const windowStart = repo.last_ingested_at ?? bootstrapStart;
+    console.log(
+      `[ingest] ${r.full_name}: window ${windowStart} → ${repoWindowEnd}`,
+    );
 
     // ── commits ──
     try {
@@ -226,6 +253,14 @@ async function ingestOneRepo(
           anyFounder(founders, ...reviews.map((rv) => rv.user?.login ?? null)) ||
           anyFounder(founders, ...reviewComments.map((rc) => rc.user?.login ?? null));
 
+        // Distinct participants = author + everyone who left a conversation
+        // comment, review, or review comment. Drives "👥 N" on the card.
+        const prParticipants = new Set<string>();
+        if (item.user?.login) prParticipants.add(item.user.login);
+        for (const c of comments) if (c.user?.login) prParticipants.add(c.user.login);
+        for (const rv of reviews) if (rv.user?.login) prParticipants.add(rv.user.login);
+        for (const rc of reviewComments) if (rc.user?.login) prParticipants.add(rc.user.login);
+
         const up = await upsertPullRequest(
           db,
           repo.id,
@@ -233,6 +268,7 @@ async function ingestOneRepo(
           item,
           detail,
           founderInvolvedFull,
+          prParticipants.size,
         );
         itemsIngested++;
         for (const c of comments) await upsertPrConversationComment(db, up.id, c, founders);
@@ -240,7 +276,18 @@ async function ingestOneRepo(
         for (const rc of reviewComments) await upsertPrComment(db, up.id, rc, founders);
         await markPendingIfMaterialPullRequest(db, up.id);
       } else {
-        const up = await upsertIssue(db, repo.id, runId, item, founderInvolved);
+        const issueParticipants = new Set<string>();
+        if (item.user?.login) issueParticipants.add(item.user.login);
+        for (const c of comments) if (c.user?.login) issueParticipants.add(c.user.login);
+
+        const up = await upsertIssue(
+          db,
+          repo.id,
+          runId,
+          item,
+          founderInvolved,
+          issueParticipants.size,
+        );
         itemsIngested++;
         for (const c of comments) await upsertIssueComment(db, up.id, c, founders);
         await markPendingIfMaterialIssue(db, up.id);
@@ -262,7 +309,19 @@ async function ingestOneRepo(
           ...replyAuthors,
         );
 
-        const up = await upsertDiscussion(db, repo.id, runId, d, dFounderInvolved);
+        const dParticipants = new Set<string>();
+        if (d.author?.login) dParticipants.add(d.author.login);
+        for (const a of directCommentAuthors) if (a) dParticipants.add(a);
+        for (const a of replyAuthors) if (a) dParticipants.add(a);
+
+        const up = await upsertDiscussion(
+          db,
+          repo.id,
+          runId,
+          d,
+          dFounderInvolved,
+          dParticipants.size,
+        );
         itemsIngested++;
         for (const c of d.comments.nodes) {
           const cId = await upsertDiscussionComment(db, up.id, null, c, founders);
@@ -276,6 +335,10 @@ async function ingestOneRepo(
       console.warn(`discussions ${r.full_name}: ${(e as Error).message}`);
     }
 
+    // Checkpoint *this* repo so the next invocation skips it (or pulls only
+    // a small delta). Done last on purpose — partial failures above leave the
+    // watermark where it was and the next run retries from there.
+    await setRepoWatermark(db, repo.id, repoWindowEnd);
     return { reposSeen: 1, itemsIngested };
   } catch (e) {
     // Whole-repo failure (e.g. upsertRepo crash). Log and let other repos run.

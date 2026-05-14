@@ -284,6 +284,7 @@ export interface UpsertedRepo {
   id: number;
   name: string;
   full_name: string;
+  last_ingested_at: string | null;
 }
 
 export async function upsertRepo(
@@ -308,10 +309,27 @@ export async function upsertRepo(
       },
       { onConflict: 'github_id' },
     )
-    .select('id, name, full_name')
+    .select('id, name, full_name, last_ingested_at')
     .single();
   if (error) throw new Error(`upsertRepo ${r.full_name}: ${error.message}`);
   return data as UpsertedRepo;
+}
+
+/**
+ * Per-repo ingest watermark. Set only after a repo's pipeline completes
+ * cleanly, so a wall-clock-killed worker leaves already-finished repos
+ * checkpointed — the next invocation skips them (or pulls a small delta).
+ */
+export async function setRepoWatermark(
+  db: SupabaseClient,
+  repoId: number,
+  at: string,
+): Promise<void> {
+  const { error } = await db
+    .from('repos')
+    .update({ last_ingested_at: at })
+    .eq('id', repoId);
+  if (error) throw new Error(`setRepoWatermark ${repoId}: ${error.message}`);
 }
 
 // ── commits ─────────────────────────────────────────────────────────────────
@@ -384,6 +402,7 @@ export async function upsertIssue(
   runId: number,
   i: GhIssueOrPr,
   founderInvolved: boolean,
+  participantsCount: number,
 ): Promise<UpsertedIssueOrPr> {
   // Pure data upsert. The material-change gate (and the resulting
   // summary_status='pending' flip) is a separate concern handled by
@@ -400,6 +419,7 @@ export async function upsertIssue(
     author_login: i.user?.login ?? null,
     labels: i.labels.map((l) => ({ name: l.name, color: l.color })),
     comments_count: i.comments,
+    participants_count: participantsCount,
     created_at_gh: i.created_at,
     updated_at_gh: i.updated_at,
     closed_at: i.closed_at,
@@ -452,6 +472,7 @@ export async function upsertPullRequest(
   list: GhIssueOrPr,
   detail: GhPullDetail,
   founderInvolved: boolean,
+  participantsCount: number,
 ): Promise<UpsertedIssueOrPr> {
   const row = {
     repo_id: repoId,
@@ -472,6 +493,7 @@ export async function upsertPullRequest(
     author_login: list.user?.login ?? null,
     labels: list.labels.map((l) => ({ name: l.name, color: l.color })),
     comments_count: list.comments,
+    participants_count: participantsCount,
     created_at_gh: list.created_at,
     updated_at_gh: list.updated_at,
     closed_at: list.closed_at,
@@ -585,6 +607,7 @@ export async function upsertDiscussion(
   runId: number,
   d: GqlDiscussion,
   founderInvolved: boolean,
+  participantsCount: number,
 ): Promise<UpsertedIssueOrPr> {
   const row = {
     repo_id: repoId,
@@ -596,6 +619,7 @@ export async function upsertDiscussion(
     author_login: d.author?.login ?? null,
     upvotes: d.upvoteCount,
     comments_count: d.comments.totalCount,
+    participants_count: participantsCount,
     is_answered: !!d.isAnswered,
     answer_chosen_at: d.answerChosenAt,
     created_at_gh: d.createdAt,
@@ -1015,6 +1039,22 @@ export async function markReleaseError(
   if (nextAttempts >= 5) update.summary_status = 'error';
   const { error } = await db.from('releases').update(update).eq('id', releaseId);
   if (error) throw new Error(`markReleaseError ${releaseId}: ${error.message}`);
+}
+
+/**
+ * Mark a release as deliberately skipped — no LLM call, no error. Used for
+ * dependabot-only / empty / sub-trivial releases where a generated summary
+ * would be either useless ("routine dep bumps") or misleading.
+ */
+export async function markReleaseSkipped(
+  db: SupabaseClient,
+  releaseId: number,
+): Promise<void> {
+  const { error } = await db
+    .from('releases')
+    .update({ summary_status: 'skipped' })
+    .eq('id', releaseId);
+  if (error) throw new Error(`markReleaseSkipped ${releaseId}: ${error.message}`);
 }
 
 export interface OrgDigestWrite {
