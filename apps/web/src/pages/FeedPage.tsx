@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGasettaV3 } from '../lib/v3Context';
 import { LeftRail, type FeedFilters, type WindowKey } from '../components/LeftRail';
@@ -131,27 +131,10 @@ export function FeedPage() {
   const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
   const hasMore = filtered.length > visible.length;
 
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!hasMore) return;
-    const el = sentinelRef.current;
-    if (!el) return;
-    // Re-create the observer when visibleCount changes too. Otherwise an
-    // intersection that's already "active" after a load doesn't fire again
-    // (observers only emit on state change), and the user has to manually
-    // scroll a hair before the next page loads — easy to miss.
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setVisibleCount((n) => Math.min(n + PAGE_SIZE, filtered.length));
-        }
-      },
-      { rootMargin: '600px 0px' },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [hasMore, filtered.length, visibleCount]);
-
+  // No IntersectionObserver — auto-scroll loaders were too aggressive and
+  // chained into loading the entire feed at once. Explicit "Load more"
+  // button below is the only affordance now: predictable, accessible,
+  // works with keyboard nav, no surprises in HMR/StrictMode dev.
   const loadMore = () =>
     setVisibleCount((n) => Math.min(n + PAGE_SIZE, filtered.length));
 
@@ -248,17 +231,14 @@ export function FeedPage() {
               ))}
             </div>
             {hasMore && (
-              <>
-                <div className="load-more-bar">
-                  <button type="button" className="load-more-btn" onClick={loadMore}>
-                    Load {Math.min(PAGE_SIZE, filtered.length - visible.length)} more
-                  </button>
-                  <span className="load-more-hint">
-                    Showing {visible.length} of {filtered.length}
-                  </span>
-                </div>
-                <div ref={sentinelRef} className="feed-sentinel" aria-hidden="true" />
-              </>
+              <div className="load-more-bar">
+                <button type="button" className="load-more-btn" onClick={loadMore}>
+                  Load {Math.min(PAGE_SIZE, filtered.length - visible.length)} more
+                </button>
+                <span className="load-more-hint">
+                  Showing {visible.length} of {filtered.length}
+                </span>
+              </div>
             )}
           </>
         )}
