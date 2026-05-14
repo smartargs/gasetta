@@ -27,7 +27,18 @@ export function RightRail({
           It scans the org every few hours, then surfaces the consensus on each thread — who's
           arguing for what, where founders weighed in, and what's been decided.
         </p>
-        <p style={{ fontSize: 13 }}>Not affiliated with Neo or NGD. Built by the community.</p>
+        <p style={{ fontSize: 13 }}>
+          Not affiliated with Neo or NGD. Built by the community —{' '}
+          <a
+            className="link"
+            href="https://github.com/smartargs/gasetta"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            source on GitHub
+          </a>
+          .
+        </p>
         <div className="meta">
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span className="pulse" />

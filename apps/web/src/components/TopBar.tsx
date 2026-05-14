@@ -36,8 +36,9 @@ export function TopBar({ updatedRelative }: { updatedRelative: string }) {
         Updated {updatedRelative}
       </span>
       <a
-        href="https://github.com/"
-        onClick={(e) => e.preventDefault()}
+        href="https://github.com/smartargs/gasetta"
+        target="_blank"
+        rel="noopener noreferrer"
         style={{
           display: 'inline-flex',
           alignItems: 'center',

@@ -87,7 +87,9 @@ model or the ingest/summarize contracts.
 
 ## Reporting bugs
 
-File an issue with:
+File an issue at
+[github.com/smartargs/gasetta/issues](https://github.com/smartargs/gasetta/issues)
+with:
 
 - What happened
 - What you expected

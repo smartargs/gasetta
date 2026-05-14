@@ -268,3 +268,19 @@ GitHub to verify anything material.
 ## License
 
 [MIT](./LICENSE).
+
+---
+
+<p align="center">
+  <a href="https://www.gasetta.com"><b>gasetta.com</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/smartargs/gasetta">github.com/smartargs/gasetta</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/smartargs/gasetta/issues">issues</a>
+  &nbsp;·&nbsp;
+  <a href="./LICENSE">MIT</a>
+</p>
+
+<p align="center">
+  <sub>Built by the community. Not affiliated with Neo or NGD.</sub>
+</p>
