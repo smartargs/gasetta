@@ -59,3 +59,9 @@ Thumbs.db
 
 # ─── design bundle staging (large, regenerable from Claude Design) ──────────
 .design-bundle/
+
+# ─── internal design briefs ─────────────────────────────────────────────────
+# Handoff documents written for claude.ai/design. Useful locally but not
+# load-bearing for the open-source project.
+design.md
+design-v*.md
