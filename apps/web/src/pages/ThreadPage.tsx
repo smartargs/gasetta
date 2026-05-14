@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useGasettaV3 } from '../lib/v3Context';
 import { useThreadComments, type RawComment } from '../lib/threadComments';
+import { usePageMeta } from '../lib/usePageMeta';
 import {
   AITag,
   Avatar,
@@ -55,6 +56,13 @@ export function ThreadPage() {
     isCommentable ? t!.type : undefined,
     isCommentable ? t!.number : undefined,
   );
+
+  // Update the browser tab + OG meta for whatever thread is showing. Falls
+  // back to a generic title when the thread isn't loaded yet.
+  usePageMeta({
+    title: t ? `${t.title} · ${t.repo}${t.number != null ? ` #${t.number}` : ''} · Gasetta` : 'Thread · Gasetta',
+    description: t?.summary || (t ? `Discussion on ${t.repo}.` : undefined),
+  });
 
   if (!t) {
     return (
