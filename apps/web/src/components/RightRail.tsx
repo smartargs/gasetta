@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Icon } from './atoms';
+import { Avatar, Icon } from './atoms';
 import type { LiveStats, ResolvedRow, TopContributor } from '../data/v3types';
 
 interface RightRailProps {
@@ -86,7 +86,7 @@ export function RightRail({
               className={`contrib ${c.founder ? 'founder' : ''}`}
               onClick={() => onOpenContributor?.(c)}
             >
-              <span className="avatar">{c.initials}</span>
+              <Avatar login={c.login} initials={c.initials} founder={c.founder} size={28} />
               <div className="who">
                 <span className="name">
                   {c.name}

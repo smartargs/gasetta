@@ -1,8 +1,11 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useGasettaV3 } from '../lib/v3Context';
 import { useThreadComments, type RawComment } from '../lib/threadComments';
 import {
   AITag,
+  Avatar,
   ConsensusChip,
   FounderMark,
   Icon,
@@ -12,12 +15,46 @@ import {
   VersionChip,
 } from '../components/atoms';
 
+/**
+ * Renders text as GitHub-flavored markdown. Used for comment bodies and
+ * founder pull-quotes — both are verbatim copies of GitHub comments, which
+ * routinely use blockquotes, bold/italic, code, lists, and links.
+ */
+function Markdown({ children }: { children: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        // Make all links open in a new tab and treat them as untrusted.
+        a: ({ href, children: c }) => (
+          <a href={href} target="_blank" rel="noopener noreferrer">
+            {c}
+          </a>
+        ),
+      }}
+    >
+      {children}
+    </ReactMarkdown>
+  );
+}
+
 export function ThreadPage() {
   const D = useGasettaV3();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const decoded = id ? decodeURIComponent(id) : '';
   const t = D.threads.find((x) => x.id === decoded);
+
+  // All hooks must run on every render — see "Rules of Hooks". Earlier this
+  // hook lived after the `if (!t) return` below, which crashed on a hard
+  // refresh: first render has no threads yet, hook isn't called; when threads
+  // arrive the early-return is skipped and the hook count jumps.
+  const isCommentable = !!t && (t.type === 'issue' || t.type === 'pr' || t.type === 'discussion');
+  const { data: comments, isLoading: commentsLoading } = useThreadComments(
+    isCommentable ? t!.repo : null,
+    isCommentable ? t!.type : undefined,
+    isCommentable ? t!.number : undefined,
+  );
 
   if (!t) {
     return (
@@ -44,12 +81,6 @@ export function ThreadPage() {
 
   const founderRecord = t.founder ? D.founders[t.founder] ?? null : null;
   const founderName = founderRecord?.name ?? null;
-  const isCommentable = t.type === 'issue' || t.type === 'pr' || t.type === 'discussion';
-  const { data: comments, isLoading: commentsLoading } = useThreadComments(
-    isCommentable ? t.repo : null,
-    isCommentable ? t.type : undefined,
-    isCommentable ? t.number : undefined,
-  );
 
   return (
     <div className="thread">
@@ -66,13 +97,35 @@ export function ThreadPage() {
       <div className="head">
         <div className="meta">
           <TypePill type={t.type} />
-          <span style={{ fontFamily: 'var(--mono)' }}>{t.repo}</span>
-          {t.number != null && (
-            <span style={{ fontFamily: 'var(--mono)', color: 'var(--ink-3)' }}>#{t.number}</span>
+          {t.htmlUrl ? (
+            <a
+              className="repo-ref"
+              href={t.htmlUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open on GitHub"
+            >
+              <span style={{ fontFamily: 'var(--mono)' }}>{t.repo}</span>
+              {t.number != null && (
+                <span style={{ fontFamily: 'var(--mono)', color: 'var(--ink-3)' }}>
+                  {' '}
+                  #{t.number}
+                </span>
+              )}
+            </a>
+          ) : (
+            <>
+              <span style={{ fontFamily: 'var(--mono)' }}>{t.repo}</span>
+              {t.number != null && (
+                <span style={{ fontFamily: 'var(--mono)', color: 'var(--ink-3)' }}>
+                  #{t.number}
+                </span>
+              )}
+            </>
           )}
           <span>·</span>
           <span>{t.when}</span>
-          <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <span className="meta-right">
             <StatePill
               state={t.state}
               isMerged={t.isMerged}
@@ -80,9 +133,48 @@ export function ThreadPage() {
               type={t.type}
             />
             <VersionChip value={t.version ?? undefined} />
+            {t.htmlUrl && (
+              <a
+                className="gh-link"
+                href={t.htmlUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open on GitHub"
+              >
+                <Icon name="github" size={12} />
+                <span>GitHub</span>
+              </a>
+            )}
           </span>
         </div>
-        <h1>{t.title}</h1>
+        <h1>
+          {t.htmlUrl ? (
+            <a
+              className="title-link"
+              href={t.htmlUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open on GitHub"
+            >
+              {t.title}
+            </a>
+          ) : (
+            t.title
+          )}
+        </h1>
+        {t.author && (
+          <div className="author-line">
+            opened by{' '}
+            <a
+              href={`https://github.com/${t.author}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontFamily: 'var(--mono)', color: 'var(--ink-2)' }}
+            >
+              @{t.author}
+            </a>
+          </div>
+        )}
       </div>
 
       <div className="consensus-block">
@@ -127,11 +219,20 @@ export function ThreadPage() {
           <>
             <h3>Founder pull-quote</h3>
             <div className="founder-quote-block">
-              <div className="body">{t.founderQuote}</div>
+              <div className="body">
+                <Markdown>{t.founderQuote}</Markdown>
+              </div>
               <div className="who">
                 <span style={{ fontWeight: 600 }}>{founderName}</span>
                 {t.founder && (
-                  <span style={{ fontFamily: 'var(--mono)', opacity: 0.7 }}>@{t.founder}</span>
+                  <a
+                    href={`https://github.com/${t.founder}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontFamily: 'var(--mono)', opacity: 0.7, textDecoration: 'none' }}
+                  >
+                    @{t.founder}
+                  </a>
                 )}
               </div>
             </div>
@@ -176,13 +277,49 @@ function RawThread({
 }
 
 function Comment({ c }: { c: RawComment }) {
+  const profileHref = c.login !== 'unknown' ? `https://github.com/${c.login}` : null;
   return (
     <div className={`comment ${c.founder ? 'is-founder' : ''}`}>
-      <div className={`avatar ${c.founder ? 'founder' : ''}`}>{c.initials}</div>
+      {profileHref ? (
+        <a
+          href={profileHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="avatar-link"
+          aria-label={`Open @${c.login} on GitHub`}
+        >
+          <Avatar login={c.login} initials={c.initials} founder={c.founder} size={28} />
+        </a>
+      ) : (
+        <Avatar login={c.login} initials={c.initials} founder={c.founder} size={28} />
+      )}
       <div>
         <div className="hd">
-          <span className="name">{c.name}</span>
-          <span className="login">@{c.login}</span>
+          {profileHref ? (
+            <>
+              <a
+                className="name name-link"
+                href={profileHref}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {c.name}
+              </a>
+              <a
+                className="login login-link"
+                href={profileHref}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                @{c.login}
+              </a>
+            </>
+          ) : (
+            <>
+              <span className="name">{c.name}</span>
+              <span className="login">@{c.login}</span>
+            </>
+          )}
           {c.role === 'core' && !c.founder && (
             <span
               style={{
@@ -213,9 +350,23 @@ function Comment({ c }: { c: RawComment }) {
               Answer
             </span>
           )}
-          <span className="when">{c.when}</span>
+          {c.htmlUrl ? (
+            <a
+              className="when when-link"
+              href={c.htmlUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open this comment on GitHub"
+            >
+              {c.when}
+            </a>
+          ) : (
+            <span className="when">{c.when}</span>
+          )}
         </div>
-        <div className="body">{c.body}</div>
+        <div className="body">
+          <Markdown>{c.body}</Markdown>
+        </div>
       </div>
     </div>
   );

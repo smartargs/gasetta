@@ -2,6 +2,7 @@
 // founder marker, AI tag, version chip, skeleton card.
 // Ports the design's ui.jsx; styles live in index.css.
 
+import { useState } from 'react';
 import type { CSSProperties, SVGProps } from 'react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -241,6 +242,51 @@ export interface FounderRecord {
   initials: string;
 }
 
+/**
+ * Renders a user avatar. Defaults to GitHub's hosted avatar
+ * (`avatars.githubusercontent.com/<login>`) — stable, CDN-backed, no DB
+ * storage required. If the request fails (private account, network, etc.)
+ * we fall back to the initials block so the layout doesn't shift.
+ *
+ * Why request 2× the rendered size: avoids fuzziness on high-DPI displays.
+ */
+export function Avatar({
+  login,
+  initials,
+  founder = false,
+  size = 36,
+  className,
+}: {
+  login: string | null | undefined;
+  initials: string;
+  founder?: boolean;
+  size?: number;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const cls = ['avatar', founder ? 'founder' : '', className].filter(Boolean).join(' ');
+  // Inline style is authoritative for sizing — beats any class width/height
+  // already in place (e.g. legacy .comment .avatar { width: 28px }).
+  const sizeStyle = { width: size, height: size, flex: 'none' as const };
+  if (!login || login === 'unknown' || failed) {
+    return (
+      <span className={cls} style={sizeStyle}>
+        {initials}
+      </span>
+    );
+  }
+  return (
+    <img
+      src={`https://avatars.githubusercontent.com/${login}?s=${size * 2}`}
+      alt={`@${login}`}
+      onError={() => setFailed(true)}
+      loading="lazy"
+      className={cls}
+      style={{ ...sizeStyle, objectFit: 'cover', borderRadius: '50%' }}
+    />
+  );
+}
+
 export function FounderMark({
   founder,
   name,
@@ -251,7 +297,7 @@ export function FounderMark({
   if (!founder) return null;
   return (
     <span className="founder-mark" title={`${founder.name} participated in this thread`}>
-      <span className="avatar">{founder.initials}</span>
+      <Avatar login={founder.login} initials={founder.initials} founder size={18} />
       {name || founder.name}
     </span>
   );

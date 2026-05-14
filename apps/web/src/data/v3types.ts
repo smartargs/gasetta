@@ -27,6 +27,9 @@ export interface Thread {
   participants?: number;
   version?: Version | null;
   when: string;
+  updatedAt?: string | null;
+  author?: string | null;
+  htmlUrl?: string | null;
   founder?: string | null;
   founderQuote?: string | null;
   summaryStatus?: SummaryStatus;

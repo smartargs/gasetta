@@ -15,6 +15,7 @@ export interface RawComment {
   founder: boolean;
   isAnswer?: boolean;
   upvotes?: number;
+  htmlUrl: string | null;
 }
 
 function relTime(iso: string | null): string {
@@ -81,8 +82,8 @@ export async function fetchThreadComments(
 
   const selectCols =
     type === 'discussion'
-      ? 'author_login, body, created_at_gh, role, is_answer, upvotes'
-      : 'author_login, body, created_at_gh, role';
+      ? 'author_login, body, created_at_gh, role, html_url, is_answer, upvotes'
+      : 'author_login, body, created_at_gh, role, html_url';
 
   const commentsRes = await supabase
     .from(map.table)
@@ -95,6 +96,7 @@ export async function fetchThreadComments(
         body: string;
         created_at_gh: string | null;
         role: 'founder' | 'core' | 'community' | null;
+        html_url: string | null;
         is_answer?: boolean;
         upvotes?: number;
       }>
@@ -117,6 +119,7 @@ export async function fetchThreadComments(
       founder: role === 'founder',
       isAnswer: c.is_answer,
       upvotes: c.upvotes,
+      htmlUrl: c.html_url,
     };
   });
 }

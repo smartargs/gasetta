@@ -35,6 +35,8 @@ interface DbIssue {
   body: string | null;
   state: 'open' | 'closed';
   comments_count: number;
+  participants_count: number;
+  author_login: string | null;
   founder_involved: boolean;
   consensus_chip: string | null;
   summary: string | null;
@@ -63,6 +65,7 @@ interface DbPr {
   changed_files: number | null;
   author_login: string | null;
   comments_count: number;
+  participants_count: number;
   founder_involved: boolean;
   consensus_chip: string | null;
   summary: string | null;
@@ -86,6 +89,8 @@ interface DbDiscussion {
   body: string | null;
   is_answered: boolean;
   comments_count: number;
+  participants_count: number;
+  author_login: string | null;
   founder_involved: boolean;
   consensus_chip: string | null;
   summary: string | null;
@@ -256,9 +261,12 @@ function toIssueThread(i: DbIssue): Thread {
     consensusChip: i.consensus_chip,
     sentiment: i.sentiment,
     comments: i.comments_count,
-    participants: 0,
+    participants: i.participants_count,
     version,
     when: relTime(i.updated_at_gh),
+    updatedAt: i.updated_at_gh,
+    author: i.author_login,
+    htmlUrl: i.html_url,
     founder: founderLogin,
     founderQuote: extractFounderQuote(i.founder_quotes, founderLogin),
     summaryStatus: (i.summary_status as SummaryStatus) ?? 'pending',
@@ -290,9 +298,12 @@ function toPrThread(p: DbPr): Thread {
     consensusChip: p.consensus_chip,
     sentiment: p.sentiment,
     comments: p.comments_count,
-    participants: 0,
+    participants: p.participants_count,
     version,
     when: relTime(p.updated_at_gh),
+    updatedAt: p.updated_at_gh,
+    author: p.author_login,
+    htmlUrl: p.html_url,
     founder: founderLogin,
     founderQuote: extractFounderQuote(p.founder_quotes, founderLogin),
     summaryStatus: (p.summary_status as SummaryStatus) ?? 'pending',
@@ -329,9 +340,12 @@ function toDiscussionThread(d: DbDiscussion): Thread {
     consensusChip: d.consensus_chip,
     sentiment: d.sentiment,
     comments: d.comments_count,
-    participants: 0,
+    participants: d.participants_count,
     version,
     when: relTime(d.updated_at_gh),
+    updatedAt: d.updated_at_gh,
+    author: d.author_login,
+    htmlUrl: d.html_url,
     founder: founderLogin,
     founderQuote: extractFounderQuote(d.founder_quotes, founderLogin),
     summaryStatus: (d.summary_status as SummaryStatus) ?? 'pending',
@@ -358,10 +372,40 @@ function toReleaseThread(r: DbRelease): Thread {
     title: r.name ?? r.tag_name,
     summary: r.summary ?? r.body?.slice(0, 240) ?? '(no notes)',
     when: relTime(r.published_at),
+    updatedAt: r.published_at,
+    htmlUrl: r.html_url,
     tag: r.tag_name,
     summaryStatus: (r.summary_status as SummaryStatus) ?? 'pending',
-    importance: 30, // releases sit mid-feed; not the focus
+    importance: releaseImportance(r),
   };
+}
+
+/**
+ * Score a release for "Hot" sorting. Most releases on neo-project repos are
+ * auto-generated dependabot bump-notes — they have no comments and a body
+ * that's just "Bump X from Y to Z by @dependabot[bot]" repeated, so they
+ * shouldn't dominate the feed. Real, curated releases (AI-summarized, or
+ * with substantive body content) score higher.
+ */
+function releaseImportance(r: DbRelease): number {
+  const body = (r.body ?? '').toLowerCase();
+  const lines = body.split('\n').map((l) => l.trim()).filter(Boolean);
+
+  if (lines.length === 0) return 8; // empty body — neither boring nor interesting
+
+  // Heuristic: count dep-bump lines (the dependabot signature).
+  const bumpLines = lines.filter(
+    (l) => /\bbump\b.+\bfrom\b.+\bto\b/.test(l) || l.includes('@dependabot'),
+  ).length;
+  const bumpRatio = bumpLines / lines.length;
+
+  // Mostly bumps → low priority. Some bumps mixed with real notes → middle.
+  // No bumps but a real body → mid-high. A real AI summary present → highest.
+  if (bumpRatio > 0.5) return 4;
+  const hasCuratedSummary = r.summary && r.summary.trim().length > 20;
+  if (hasCuratedSummary) return 22;
+  if (bumpRatio > 0.2) return 10;
+  return 16;
 }
 
 function guessFounderLogin(quotes: unknown): string | null {
@@ -543,19 +587,44 @@ function pickOutcome(
 
 // ── version activity ───────────────────────────────────────────────────────
 
-function buildVersionActivity(threads: Thread[]): VersionActivity {
-  const window = '14d';
+const VERSION_ACTIVITY_WINDOW_DAYS = 14;
+
+function buildVersionActivity(
+  issues: DbIssue[],
+  prs: DbPr[],
+  discussions: DbDiscussion[],
+  releases: DbRelease[],
+): VersionActivity {
+  const cutoffMs = Date.now() - VERSION_ACTIVITY_WINDOW_DAYS * 86_400_000;
+  const within = (iso: string | null | undefined): boolean =>
+    !!iso && new Date(iso).getTime() >= cutoffMs;
+
   const n3 = { total: 0, issues: 0, prs: 0, discussions: 0, releases: 0 };
   const n4 = { total: 0, issues: 0, prs: 0, discussions: 0, releases: 0 };
-  for (const t of threads) {
-    const bucket = t.version === 'N4' ? n4 : n3;
-    bucket.total++;
-    if (t.type === 'issue') bucket.issues++;
-    else if (t.type === 'pr') bucket.prs++;
-    else if (t.type === 'discussion') bucket.discussions++;
-    else if (t.type === 'release') bucket.releases++;
+
+  for (const i of issues) {
+    if (!within(i.updated_at_gh)) continue;
+    const b = classifyVersion(i.title, i.labels) === 'N4' ? n4 : n3;
+    b.total++; b.issues++;
   }
-  return { windowLabel: `last ${window}`, n3, n4 };
+  for (const p of prs) {
+    if (!within(p.updated_at_gh)) continue;
+    const b = classifyVersion(p.title, p.labels, p.base_ref) === 'N4' ? n4 : n3;
+    b.total++; b.prs++;
+  }
+  for (const d of discussions) {
+    if (!within(d.updated_at_gh)) continue;
+    const b = classifyVersion(d.title, null) === 'N4' ? n4 : n3;
+    b.total++; b.discussions++;
+  }
+  for (const r of releases) {
+    if (!within(r.published_at)) continue;
+    // Releases don't carry version labels — best-effort title-only.
+    const b = classifyVersion(r.name ?? r.tag_name, null) === 'N4' ? n4 : n3;
+    b.total++; b.releases++;
+  }
+
+  return { windowLabel: `last ${VERSION_ACTIVITY_WINDOW_DAYS}d`, n3, n4 };
 }
 
 // ── N4 features (hardcoded — Neo-specific architectural decisions) ─────────
@@ -725,9 +794,10 @@ export async function loadGasettaV3(): Promise<GasettaV3> {
     supabase
       .from('issues')
       .select(
-        'id, number, title, body, state, comments_count, founder_involved, ' +
-          'consensus_chip, summary, summary_status, sentiment, html_url, ' +
-          'updated_at_gh, closed_at, labels, key_points, decisions, founder_quotes, repos:repo_id(name)',
+        'id, number, title, body, state, comments_count, participants_count, ' +
+          'author_login, founder_involved, consensus_chip, summary, summary_status, ' +
+          'sentiment, html_url, updated_at_gh, closed_at, labels, key_points, ' +
+          'decisions, founder_quotes, repos:repo_id(name)',
       )
       .order('updated_at_gh', { ascending: false })
       .limit(150),
@@ -735,18 +805,20 @@ export async function loadGasettaV3(): Promise<GasettaV3> {
       .from('pull_requests')
       .select(
         'id, number, title, body, state, is_merged, is_draft, additions, deletions, ' +
-          'changed_files, author_login, comments_count, founder_involved, consensus_chip, ' +
-          'summary, summary_status, sentiment, html_url, updated_at_gh, closed_at, ' +
-          'base_ref, labels, key_points, decisions, founder_quotes, repos:repo_id(name)',
+          'changed_files, author_login, comments_count, participants_count, ' +
+          'founder_involved, consensus_chip, summary, summary_status, sentiment, ' +
+          'html_url, updated_at_gh, closed_at, base_ref, labels, key_points, ' +
+          'decisions, founder_quotes, repos:repo_id(name)',
       )
       .order('updated_at_gh', { ascending: false })
       .limit(300),
     supabase
       .from('discussions')
       .select(
-        'id, number, title, body, is_answered, comments_count, founder_involved, ' +
-          'consensus_chip, summary, summary_status, sentiment, html_url, ' +
-          'updated_at_gh, key_points, decisions, founder_quotes, repos:repo_id(name)',
+        'id, number, title, body, is_answered, comments_count, participants_count, ' +
+          'author_login, founder_involved, consensus_chip, summary, summary_status, ' +
+          'sentiment, html_url, updated_at_gh, key_points, decisions, ' +
+          'founder_quotes, repos:repo_id(name)',
       )
       .order('updated_at_gh', { ascending: false })
       .limit(80),
@@ -787,7 +859,7 @@ export async function loadGasettaV3(): Promise<GasettaV3> {
   // merged-PR activity. Skipping for v0 of the rewrite — purely cosmetic; can add
   // later by pulling from public.commits.
 
-  const versionActivity = buildVersionActivity(threads);
+  const versionActivity = buildVersionActivity(issuesRaw, prsRaw, discRaw, releasesRaw);
   const n4Pct =
     versionActivity.n3.total + versionActivity.n4.total === 0
       ? 50
