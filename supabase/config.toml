@@ -1,0 +1,59 @@
+# supabase/config.toml — local-development configuration.
+# Reference: https://supabase.com/docs/guides/local-development/cli/config
+
+project_id = "gasetta"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = false
+
+# Auth is enabled even though the product itself has no sign-in flow:
+# newer Supabase CLI versions need the auth service running to mint the
+# anon / service-role keys that `supabase status -o env` exposes. Cheap to
+# leave on locally; in production it lives outside the project anyway.
+[auth]
+enabled = true
+
+[edge_runtime]
+enabled = true
+policy = "oneshot"
+inspector_port = 8083
+
+[analytics]
+enabled = false
+
+# ── Edge Functions ─────────────────────────────────────────────
+# Invoked by pg_cron via pg_net (service-role key in Vault).
+# `verify_jwt = false` because pg_net passes our own service-role bearer.
+
+[functions.ingest]
+verify_jwt = false
+
+[functions.summarize]
+verify_jwt = false

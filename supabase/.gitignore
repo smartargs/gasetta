@@ -1,0 +1,12 @@
+.branches
+.temp
+.env
+.env.*
+!.env.example
+seed.local.sql
+
+# Per-function envs (supabase functions serve --env-file)
+functions/.env
+functions/.env.*
+functions/**/.env
+functions/**/.env.*

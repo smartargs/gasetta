@@ -1,0 +1,11 @@
+node_modules
+dist
+.DS_Store
+*.log
+.vite
+
+# Vite reads any of these — never commit real values
+.env
+.env.*
+!.env.example
+*.local

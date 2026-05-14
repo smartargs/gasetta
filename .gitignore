@@ -1,0 +1,61 @@
+# ─── secrets ────────────────────────────────────────────────────────────────
+# Never commit anything that could hold a real credential.
+.env
+.env.*
+!.env.example
+*.env
+*.env.local
+*.local
+
+# Tokens / keys / certs by extension
+*.pem
+*.key
+*.p12
+*.cert
+*.crt
+id_rsa
+id_ed25519
+*.gpg
+*.asc
+
+# IDE-bundled secrets
+.idea/workspace.xml
+.vscode/settings.json
+
+# ─── node / vite ────────────────────────────────────────────────────────────
+node_modules/
+dist/
+build/
+.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─── supabase local ─────────────────────────────────────────────────────────
+.branches
+.temp
+seed.local.sql
+supabase/.env
+supabase/.env.*
+supabase/functions/.env
+supabase/functions/**/.env
+supabase/.branches
+supabase/.temp
+
+# ─── deno cache (when running deno check locally) ───────────────────────────
+.deno/
+
+# ─── editor / OS ────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# ─── design bundle staging (large, regenerable from Claude Design) ──────────
+.design-bundle/
