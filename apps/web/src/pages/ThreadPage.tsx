@@ -1,6 +1,8 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { useThreadComments, type RawComment } from '../lib/threadComments';
 import { usePageMeta } from '../lib/usePageMeta';
@@ -16,6 +18,23 @@ import {
   VersionChip,
 } from '../components/atoms';
 
+const markdownSanitizeSchema: typeof defaultSchema = {
+  ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames ?? []),
+    'del',
+    's',
+    'sub',
+    'sup',
+    'kbd',
+    'mark',
+    'details',
+    'summary',
+    'ins',
+    'u',
+  ],
+};
+
 /**
  * Renders text as GitHub-flavored markdown. Used for comment bodies and
  * founder pull-quotes — both are verbatim copies of GitHub comments, which
@@ -25,6 +44,7 @@ function Markdown({ children }: { children: string }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeSchema]]}
       components={{
         // Make all links open in a new tab and treat them as untrusted.
         a: ({ href, children: c }) => (
