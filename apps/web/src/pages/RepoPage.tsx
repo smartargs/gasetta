@@ -1,15 +1,31 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useGasettaV3 } from '../lib/v3Context';
+import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { Icon } from '../components/atoms';
 import { FeedCard } from '../components/FeedCard';
 
 export function RepoPage() {
   const D = useGasettaV3();
+  const isLoading = useGasettaLoading();
   const navigate = useNavigate();
   const { name } = useParams<{ name: string }>();
   const repoName = name ? decodeURIComponent(name) : '';
   const repo = D.repos.find((r) => r.name === repoName);
   if (!repo) {
+    if (isLoading) {
+      return (
+        <div style={{ padding: 24, maxWidth: 980, margin: '0 auto' }}>
+          <Link to="/repos" className="back">
+            <Icon name="chevron-left" size={14} /> All repos
+          </Link>
+          <div className="skeleton-card" style={{ marginTop: 16 }}>
+            <div className="skel-line" style={{ width: '30%', height: 22 }} />
+            <div className="skel-line" style={{ width: '70%' }} />
+            <div className="skel-line" style={{ width: '60%' }} />
+            <div className="skel-line" style={{ width: '90%' }} />
+          </div>
+        </div>
+      );
+    }
     return (
       <div style={{ padding: 40, maxWidth: 720, margin: '0 auto' }}>
         <Link to="/repos" className="back">

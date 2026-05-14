@@ -1,7 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useGasettaV3 } from '../lib/v3Context';
+import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { useThreadComments, type RawComment } from '../lib/threadComments';
 import { usePageMeta } from '../lib/usePageMeta';
 import {
@@ -41,6 +41,7 @@ function Markdown({ children }: { children: string }) {
 
 export function ThreadPage() {
   const D = useGasettaV3();
+  const isLoading = useGasettaLoading();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const decoded = id ? decodeURIComponent(id) : '';
@@ -65,6 +66,33 @@ export function ThreadPage() {
   });
 
   if (!t) {
+    // While the v3 fetch is still in flight, render a skeleton instead of
+    // the "not found" card — otherwise hard-refreshes on /threads/foo
+    // flash a misleading error before the real data lands.
+    if (isLoading) {
+      return (
+        <div className="thread">
+          <Link
+            className="back"
+            to="/"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/');
+            }}
+          >
+            <Icon name="chevron-left" size={14} /> Back to feed
+          </Link>
+          <div className="skeleton-card" style={{ marginTop: 16 }}>
+            <div className="skel-line" style={{ width: '40%', height: 14 }} />
+            <div className="skel-line" style={{ width: '85%', height: 22 }} />
+            <div className="skel-line" style={{ width: '70%', height: 22 }} />
+            <div className="skel-line" style={{ width: '95%' }} />
+            <div className="skel-line" style={{ width: '90%' }} />
+            <div className="skel-line" style={{ width: '60%' }} />
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="thread">
         <Link
