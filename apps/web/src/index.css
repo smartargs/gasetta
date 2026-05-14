@@ -831,46 +831,30 @@ button{ font-family: inherit; }
 .chip.consensus-stalled{ background: var(--c-stalled-bg); color: var(--c-stalled-fg); font-style: italic; }
 
 /* sentiment meter */
-.sent{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  /* Match the .chip outer dimensions exactly (22px tall with vertical
-     padding) so the bars + label render on the same baseline as
-     neighbouring chips. `min-height` wasn't enough — Chrome/Firefox both
-     layout flex items by their natural content height when min-height is
-     set on the box itself, and the bars (4px) plus an 11px label end up
-     at the *top* of the box rather than its center. Explicit `height`
-     removes that ambiguity. */
-  height: 22px;
-  box-sizing: border-box;
-  padding: 0 2px;
-  line-height: 1;
-  font-size: 11px;
-  color: var(--ink-3);
-  font-weight: 500;
-}
-.sent .bars{
+.sent-bars{
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  /* align-self ensures the bars container sits at the .sent vertical
-     midpoint regardless of any browser quirk around nested inline-flex. */
-  align-self: center;
+  margin-right: -3px;
 }
-.sent .bars i{
+.sent-bars i{
   width: 8px;
   height: 8px;
   border-radius: 2px;
   background: var(--border-strong);
   display: inline-block;
 }
-.sent .label{ align-self: center; }
-.sent.calm .bars i:nth-child(1){ background: var(--calm); }
-.sent.mixed .bars i:nth-child(1),
-.sent.mixed .bars i:nth-child(2){ background: var(--mixed); }
-.sent.contentious .bars i{ background: var(--contentious); }
-.sent.contentious .label{ color: var(--contentious); }
+.sent-label{
+  font-size: 11px;
+  color: var(--ink-3);
+  font-weight: 500;
+  line-height: 1;
+}
+.sent-bars.calm i:nth-child(1){ background: var(--calm); }
+.sent-bars.mixed i:nth-child(1),
+.sent-bars.mixed i:nth-child(2){ background: var(--mixed); }
+.sent-bars.contentious i{ background: var(--contentious); }
+.sent-label.contentious{ color: var(--contentious); }
 
 /* founder marker chip */
 .founder-mark{
@@ -1092,15 +1076,24 @@ button{ font-family: inherit; }
   text-wrap: balance;
 }
 .consensus-block .chips{ display:flex; align-items: center; gap: 8px; flex-wrap:wrap; margin-bottom: 18px; }
-/* All three chip variants in this row need the same outer box height so
-   their text baselines actually land on the same y. Without min-height
-   the sentiment meter renders ~4px shorter than the consensus chip and
-   the "Mixed" label visibly floats above the consensus chip's label. */
+
+@media (max-width: 820px){
+  .consensus-block{ padding: 18px 16px; }
+  .consensus-block .label{
+    gap: 6px;
+    white-space: nowrap;
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+  }
+}
 .consensus-block .chips > .chip,
-.consensus-block .chips > .sent,
+.consensus-block .chips > .sent-bars,
+.consensus-block .chips > .sent-label,
 .consensus-block .chips > .founder-mark{
   min-height: 22px;
   box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
 }
 .consensus-block h3{
   font-family: var(--sans);

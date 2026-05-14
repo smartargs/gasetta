@@ -212,9 +212,10 @@ export function ConsensusChip({ value }: { value?: string | null }) {
   else if (v.startsWith('leaning')) cls = 'consensus-leaning';
   else if (v.startsWith('split')) cls = 'consensus-split';
   else if (v.startsWith('stalled')) cls = 'consensus-stalled';
+  const display = v === 'open' ? 'In discussion' : value;
   return (
     <span className={`chip ${cls}`} title="AI-derived conversation consensus">
-      {value}
+      {display}
     </span>
   );
 }
@@ -225,14 +226,14 @@ export function SentimentMeter({ value }: { value?: Sentiment | null }) {
   const v: Sentiment = value || 'calm';
   const label = v === 'calm' ? 'Calm' : v === 'mixed' ? 'Mixed' : 'Contentious';
   return (
-    <span className={`sent ${v}`} title={`Conversation tone: ${label}`}>
-      <span className="bars" aria-hidden="true">
+    <>
+      <span className={`sent-bars ${v}`} aria-hidden="true" title={`Conversation tone: ${label}`}>
         <i />
         <i />
         <i />
       </span>
-      <span className="label">{label}</span>
-    </span>
+      <span className={`sent-label ${v}`}>{label}</span>
+    </>
   );
 }
 
