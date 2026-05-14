@@ -221,13 +221,19 @@ function extractFounderQuote(quotes: unknown, founderLogin: string | null): stri
 function scoreForThread(
   type: ItemType,
   commentsCount: number,
+  participantsCount: number,
   founderInvolved: boolean,
   sentiment: Sentiment | null,
   state: string,
   consensusChip: string | null,
   updatedAtGh: string | null,
+  resolved: boolean,
 ): number {
   let s = commentsCount * recencyDecay(updatedAtGh);
+  // Reward broad participation (diminishing returns) — two people in a
+  // 30-comment back-and-forth should beat 10 people in a 30-comment thread
+  // by less than the comment count alone implies.
+  s += Math.log(participantsCount + 1) * 2;
   if (founderInvolved) s += 5;
   if (sentiment === 'contentious') s += 3;
   if (state === 'open') s += 2;
@@ -242,6 +248,10 @@ function scoreForThread(
   ) {
     s += 2;
   }
+  // Resolved threads (merged PR, answered discussion, closed issue) fade
+  // faster: half the score so a 20-comment merged PR ranks like a 10-comment
+  // open one. Still visible if otherwise very hot, but doesn't dominate.
+  if (resolved) s *= 0.5;
   return s;
 }
 
@@ -275,11 +285,13 @@ function toIssueThread(i: DbIssue): Thread {
     importance: scoreForThread(
       'issue',
       i.comments_count,
+      i.participants_count,
       i.founder_involved,
       i.sentiment,
       i.state,
       i.consensus_chip,
       i.updated_at_gh,
+      i.state === 'closed',
     ),
   };
 }
@@ -317,11 +329,13 @@ function toPrThread(p: DbPr): Thread {
     importance: scoreForThread(
       'pr',
       p.comments_count,
+      p.participants_count,
       p.founder_involved,
       p.sentiment,
       p.state,
       p.consensus_chip,
       p.updated_at_gh,
+      p.is_merged || p.state === 'closed',
     ),
   };
 }
@@ -355,11 +369,13 @@ function toDiscussionThread(d: DbDiscussion): Thread {
     importance: scoreForThread(
       'discussion',
       d.comments_count,
+      d.participants_count,
       d.founder_involved,
       d.sentiment,
       'open',
       d.consensus_chip,
       d.updated_at_gh,
+      d.is_answered,
     ),
   };
 }
