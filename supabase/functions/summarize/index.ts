@@ -32,6 +32,7 @@ import {
   type PendingItem,
 } from '../_shared/db.ts';
 import { OpenAIClient, parseJSON } from '../_shared/openai.ts';
+import { requireServiceRole } from '../_shared/auth.ts';
 import { pool } from '../_shared/concurrency.ts';
 import {
   buildItemUserPrompt,
@@ -102,6 +103,12 @@ interface OrgDigestModelOutput {
 }
 
 Deno.serve(async (req) => {
+  // Service-role only. Same rationale as in ingest/index.ts: signature-valid
+  // `authenticated`-role JWTs (which anyone can mint via signup) would
+  // otherwise pass verify_jwt and trigger OpenAI calls on our dime.
+  const denied = requireServiceRole(req);
+  if (denied) return denied;
+
   const openaiKey = Deno.env.get('OPENAI_API_KEY');
   if (!openaiKey) {
     return new Response(

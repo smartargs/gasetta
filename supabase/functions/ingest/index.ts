@@ -44,6 +44,7 @@ import {
 } from '../_shared/db.ts';
 import { GitHubClient } from '../_shared/github.ts';
 import { anyFounder, type FoundersIndex, loadFoundersIndex } from '../_shared/founders.ts';
+import { requireServiceRole } from '../_shared/auth.ts';
 import { pool } from '../_shared/concurrency.ts';
 import type { GhRepo } from '../_shared/types.ts';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -60,7 +61,14 @@ const MAX_REPOS_PER_RUN = Number(Deno.env.get('GASETTA_MAX_REPOS_PER_RUN') ?? '6
 // handles one full repo at a time, serially.
 const REPO_CONCURRENCY = Math.max(1, Number(Deno.env.get('INGEST_REPO_CONCURRENCY') ?? '5'));
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+  // Service-role only. The gateway already validated the JWT signature; we
+  // additionally require the JWT's role claim is 'service_role' so that an
+  // authenticated user (anyone with a Supabase Auth account) can't trigger
+  // GitHub API + OpenAI calls on our dime.
+  const denied = requireServiceRole(req);
+  if (denied) return denied;
+
   const ghToken = Deno.env.get('GITHUB_TOKEN');
   if (!ghToken) {
     return new Response(JSON.stringify({ error: 'GITHUB_TOKEN missing' }), {
