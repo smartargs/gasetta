@@ -8,15 +8,32 @@ export interface FeedFilters {
   repo: string; // 'all' or repo name
 }
 
+export type WindowKey = '7d' | '30d' | '90d' | 'all';
+
 interface LeftRailProps {
   filters: FeedFilters;
   setFilters: (next: FeedFilters) => void;
+  windowKey: WindowKey;
+  setWindow: (next: WindowKey) => void;
   threads: Thread[];
   repos: RepoSummary[];
   stats: LiveStats;
+  /** Only used on mobile, where the rail is a slide-in drawer; ignored on desktop. */
+  open?: boolean;
+  onClose?: () => void;
 }
 
-export function LeftRail({ filters, setFilters, threads, repos, stats }: LeftRailProps) {
+export function LeftRail({
+  filters,
+  setFilters,
+  windowKey,
+  setWindow,
+  threads,
+  repos,
+  stats,
+  open = false,
+  onClose,
+}: LeftRailProps) {
   const counts = {
     all: threads.filter((t) => t.type !== 'commits').length,
     issues: threads.filter((t) => t.type === 'issue').length,
@@ -47,13 +64,27 @@ export function LeftRail({ filters, setFilters, threads, repos, stats }: LeftRai
     { id: 'n4', label: 'N4 — In development', n: counts.n4 },
   ];
 
+  const timeWindows: { id: WindowKey; label: string }[] = [
+    { id: 'all', label: 'All time' },
+    { id: '7d', label: 'Last 7 days' },
+    { id: '30d', label: 'Last 30 days' },
+    { id: '90d', label: 'Last 90 days' },
+  ];
+
   const repoOpts = [
     { id: 'all', label: 'All repos' },
     ...repos.slice(0, 8).map((r) => ({ id: r.name, label: r.name })),
   ];
 
   return (
-    <aside className="col-left">
+    <aside className={`col-left ${open ? 'is-open' : ''}`}>
+      {onClose && (
+        <div className="rail-close-row">
+          <button type="button" className="rail-close" onClick={onClose} aria-label="Close filters">
+            Done
+          </button>
+        </div>
+      )}
       <div className="rail-section">
         <div className="rail-title">Type</div>
         <div className="rail-list">
@@ -83,6 +114,22 @@ export function LeftRail({ filters, setFilters, threads, repos, stats }: LeftRai
               <span className="dot" />
               <span>{v.label}</span>
               <span className="count">{v.n}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rail-section">
+        <div className="rail-title">Time</div>
+        <div className="rail-list">
+          {timeWindows.map((w) => (
+            <div
+              key={w.id}
+              className={`rail-item ${windowKey === w.id ? 'active' : ''}`}
+              onClick={() => setWindow(w.id)}
+            >
+              <span className="dot" />
+              <span>{w.label}</span>
             </div>
           ))}
         </div>
