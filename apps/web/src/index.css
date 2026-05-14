@@ -366,7 +366,14 @@ button{ font-family: inherit; }
   margin-left: 4px;
 }
 @media (max-width: 820px){
-  .mobile-filters-btn{ display: inline-flex; }
+  .mobile-filters-btn{
+    display: inline-flex;
+    /* Mobile searchbar drops its 4px horizontal padding (line 516), so the
+       Filters button needs to lose its matching margin to stay flush with
+       the input's outer edge. */
+    margin-left: 0;
+    margin-right: 0;
+  }
 }
 
 /* ───── Left rail ───── */
@@ -538,10 +545,13 @@ button{ font-family: inherit; }
   }
   .sortbar .seg button{
     flex: 1 1 0;
-    padding: 7px 4px;
-    font-size: 12.5px;
+    padding: 7px 2px;
+    font-size: 12px;
     border-radius: 6px;
     min-width: 0;
+    /* "Most discussed" was wrapping to two lines at narrow widths; keep
+       each label on a single line and let the segment grow if needed. */
+    white-space: nowrap;
   }
   .sortbar .seg button[aria-pressed="true"]{
     background: var(--card);
@@ -657,7 +667,14 @@ button{ font-family: inherit; }
   flex-wrap: wrap;
 }
 .card .top .left, .card .top .right{ display:flex; align-items:center; gap:8px; }
-.card .top .right{ margin-left: auto; }
+.card .top .left{ flex-wrap: wrap; row-gap: 4px; min-width: 0; }
+.card .top .right{ margin-left: auto; flex-wrap: wrap; row-gap: 4px; }
+@media (max-width: 820px){
+  /* When the top row wraps on mobile (long repo/number + chips), drop the
+     auto-margin so the wrapped chip row hugs the left edge instead of
+     floating to the right side of the card. */
+  .card .top .right{ margin-left: 0; }
+}
 .card .top .sep{ color: var(--ink-4); }
 .card .top .repo{
   font-family: var(--mono);
@@ -815,13 +832,40 @@ button{ font-family: inherit; }
 
 /* sentiment meter */
 .sent{
-  display:inline-flex; align-items:center; gap:5px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  /* Match the .chip outer dimensions exactly (22px tall with vertical
+     padding) so the bars + label render on the same baseline as
+     neighbouring chips. `min-height` wasn't enough — Chrome/Firefox both
+     layout flex items by their natural content height when min-height is
+     set on the box itself, and the bars (4px) plus an 11px label end up
+     at the *top* of the box rather than its center. Explicit `height`
+     removes that ambiguity. */
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 2px;
+  line-height: 1;
   font-size: 11px;
   color: var(--ink-3);
   font-weight: 500;
 }
-.sent .bars{ display:inline-flex; gap: 2px; }
-.sent .bars i{ width: 8px; height: 4px; border-radius: 1px; background: var(--border-strong); display:inline-block; }
+.sent .bars{
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  /* align-self ensures the bars container sits at the .sent vertical
+     midpoint regardless of any browser quirk around nested inline-flex. */
+  align-self: center;
+}
+.sent .bars i{
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--border-strong);
+  display: inline-block;
+}
+.sent .label{ align-self: center; }
 .sent.calm .bars i:nth-child(1){ background: var(--calm); }
 .sent.mixed .bars i:nth-child(1),
 .sent.mixed .bars i:nth-child(2){ background: var(--mixed); }
@@ -1047,7 +1091,17 @@ button{ font-family: inherit; }
   letter-spacing: -0.005em;
   text-wrap: balance;
 }
-.consensus-block .chips{ display:flex; gap: 8px; flex-wrap:wrap; margin-bottom: 18px; }
+.consensus-block .chips{ display:flex; align-items: center; gap: 8px; flex-wrap:wrap; margin-bottom: 18px; }
+/* All three chip variants in this row need the same outer box height so
+   their text baselines actually land on the same y. Without min-height
+   the sentiment meter renders ~4px shorter than the consensus chip and
+   the "Mixed" label visibly floats above the consensus chip's label. */
+.consensus-block .chips > .chip,
+.consensus-block .chips > .sent,
+.consensus-block .chips > .founder-mark{
+  min-height: 22px;
+  box-sizing: border-box;
+}
 .consensus-block h3{
   font-family: var(--sans);
   font-size: 13px;
