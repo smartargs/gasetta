@@ -1,7 +1,9 @@
-import { useNavigate } from 'react-router-dom';
 import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { Icon } from '../components/atoms';
 import type { RepoSummary, Thread } from '../data/v3types';
+
+const GITHUB_ORG = 'neo-project';
+const repoGithubUrl = (name: string) => `https://github.com/${GITHUB_ORG}/${name}`;
 
 function sparklinePath(name: string) {
   let h = 0;
@@ -38,11 +40,18 @@ function countFor(threads: Thread[], name: string) {
   };
 }
 
-function RepoCard({ repo, threads, onOpen }: { repo: RepoSummary; threads: Thread[]; onOpen: () => void }) {
+function RepoCard({ repo, threads }: { repo: RepoSummary; threads: Thread[] }) {
   const c = countFor(threads, repo.name);
   const sp = sparklinePath(repo.name);
+  const href = repoGithubUrl(repo.name);
   return (
-    <div className="repo-card" onClick={onOpen} role="button" tabIndex={0}>
+    <a
+      className="repo-card"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={`Open ${GITHUB_ORG}/${repo.name} on GitHub`}
+    >
       <div className="top">
         <div className="name">
           <span className="org">neo-project /</span> {repo.name}
@@ -94,14 +103,13 @@ function RepoCard({ repo, threads, onOpen }: { repo: RepoSummary; threads: Threa
           <span style={{ marginLeft: 'auto', color: 'var(--ink-4)' }}>{c.latest.when}</span>
         </div>
       )}
-    </div>
+    </a>
   );
 }
 
 export function ReposPage() {
   const D = useGasettaV3();
   const isLoading = useGasettaLoading();
-  const navigate = useNavigate();
   const showSkeletons = isLoading && D.repos.length === 0;
   return (
     <div style={{ maxWidth: 1120, margin: '0 auto', padding: '28px 22px 80px' }}>
@@ -132,12 +140,7 @@ export function ReposPage() {
               </div>
             ))
           : D.repos.map((r) => (
-              <RepoCard
-                key={r.name}
-                repo={r}
-                threads={D.threads}
-                onOpen={() => navigate(`/repos/${encodeURIComponent(r.name)}`)}
-              />
+              <RepoCard key={r.name} repo={r} threads={D.threads} />
             ))}
       </div>
     </div>

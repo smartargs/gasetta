@@ -62,9 +62,15 @@ export function RepoPage() {
       </Link>
       <div className="repo-head">
         <div className="row1">
-          <div className="full">
+          <a
+            className="full repo-head-link"
+            href={`https://github.com/neo-project/${repo.name}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`Open neo-project/${repo.name} on GitHub`}
+          >
             neo-project / <span style={{ color: 'var(--ink)' }}>{repo.name}</span>
-          </div>
+          </a>
           <span
             className={`momentum ${repo.momentum}`}
             style={{
