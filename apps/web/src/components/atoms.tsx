@@ -1,7 +1,3 @@
-// Atoms — Icon (octicons-ish inline SVGs), pills, chips, sentiment meter,
-// founder marker, AI tag, version chip, skeleton card.
-// Ports the design's ui.jsx; styles live in index.css.
-
 import { useState } from 'react';
 import type { CSSProperties, SVGProps } from 'react';
 
@@ -243,14 +239,6 @@ export interface FounderRecord {
   initials: string;
 }
 
-/**
- * Renders a user avatar. Defaults to GitHub's hosted avatar
- * (`avatars.githubusercontent.com/<login>`) — stable, CDN-backed, no DB
- * storage required. If the request fails (private account, network, etc.)
- * we fall back to the initials block so the layout doesn't shift.
- *
- * Why request 2× the rendered size: avoids fuzziness on high-DPI displays.
- */
 export function Avatar({
   login,
   initials,

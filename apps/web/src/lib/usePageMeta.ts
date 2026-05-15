@@ -1,14 +1,3 @@
-// Tiny client-side meta updater. Keeps `document.title` and the four meta
-// tags that matter (description, og:title, og:description, twitter:title,
-// twitter:description) in sync with whatever the current route wants.
-//
-// Caveat: crawlers that don't execute JS (Slack, default Twitter, etc.)
-// will only see the initial markup in index.html — they won't pick up
-// per-thread titles or descriptions. For real per-link previews we'd need
-// SSR or a prerender pass. This hook is good enough for browser tabs,
-// history, accessibility, and the JS-capable share targets (Discord,
-// modern Twitter, etc.).
-
 import { useEffect } from 'react';
 
 interface PageMeta {

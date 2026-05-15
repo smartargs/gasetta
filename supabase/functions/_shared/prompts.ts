@@ -1,12 +1,4 @@
-// Prompt templates for the summarize function. Keeping them in one file makes
-// editorial tuning straightforward — change the voice in one place and every
-// summary follows. The system prompts encode Gasetta's tone (neutral, Reddit-
-// weighted, verbatim quotes); the user-prompt builders handle truncation +
-// founder-comment preservation.
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared values
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Shared values ───────────────────────────────────────────────────────────
 
 const ITEM_BODY_BUDGET = 800;
 const COMMENT_BODY_BUDGET = 400;

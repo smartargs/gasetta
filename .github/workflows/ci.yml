@@ -1,11 +1,3 @@
-# Lightweight CI — type-checks the frontend, builds it, and type-checks the
-# Deno edge functions. Runs on every push to main and every PR targeting
-# main. Catches what local "tsc -b" + "deno check" already catch, before a
-# bad merge ships to Cloudflare Pages / Supabase.
-#
-# Deliberately omits ESLint/Prettier (not configured in this repo) and tests
-# (none yet). Add them as steps when they land.
-
 name: CI
 
 on:
@@ -14,8 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-# Cancel in-flight CI runs when a new commit lands on the same ref — avoids
-# wasting minutes on stale push events.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -39,11 +29,8 @@ jobs:
       - name: Type-check
         run: npm run typecheck
       - name: Build
-        # Vite build catches asset / import-path errors that `tsc` alone misses.
         run: npm run build
         env:
-          # Placeholder URLs so VITE_* env-var lookups don't crash the build.
-          # Real values come from Cloudflare Pages env at deploy time.
           VITE_SUPABASE_URL: https://example.supabase.co
           VITE_SUPABASE_ANON_KEY: ci-placeholder-not-used-at-runtime
 

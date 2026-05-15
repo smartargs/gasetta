@@ -1,20 +1,3 @@
-// supabase/functions/summarize/index.ts
-//
-// Stage 2 of the pipeline: pending DB rows → OpenAI → DB. Runs after each
-// successful ingest (once a day in production).
-//
-// Auth: platform-validated bearer in prod; verify_jwt=false locally.
-//
-// Flow per invocation:
-//   1. Find the latest 'ok' run; if none, exit.
-//   2. Drain pending issues/PRs/discussions (gpt-4o-mini per item).
-//   3. Drain pending releases (mini).
-//   4. Synthesize the org_digest for this run (gpt-4o, one call).
-//   5. Return totals.
-//
-// On per-item errors: increment summary_attempts; after 5, mark 'error' with
-// the last error_text. The function still returns ok overall.
-
 import {
   createServiceClient,
   fetchItemComments,
@@ -103,9 +86,6 @@ interface OrgDigestModelOutput {
 }
 
 Deno.serve(async (req) => {
-  // Service-role only. Same rationale as in ingest/index.ts: signature-valid
-  // `authenticated`-role JWTs (which anyone can mint via signup) would
-  // otherwise pass verify_jwt and trigger OpenAI calls on our dime.
   const denied = requireServiceRole(req);
   if (denied) return denied;
 
@@ -328,9 +308,6 @@ async function synthesizeOrgDigest(
   openai: OpenAIClient,
   runId: number,
 ): Promise<number | null> {
-  // Pull every summarized item for this run plus founder activity + releases.
-  // We deliberately rank by founder + comment volume so the model gets the
-  // "loudest" content first; the prompt caps per-item summary length.
   const issuesRes = await db
     .from('issues')
     .select(

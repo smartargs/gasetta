@@ -1,5 +1,3 @@
-// Per-thread raw-comments fetch. Lazy — only the ThreadPage uses it.
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import type { ItemType } from '../components/atoms';
@@ -63,8 +61,6 @@ export async function fetchThreadComments(
   const map = commentsTableFor(type);
   if (!map) return [];
 
-  // Two-step: repo → parent → comments. Could be one join via PostgREST,
-  // but the two-step is cheaper and easier to type-check.
   const repoRow = await supabase
     .from('repos')
     .select('id')

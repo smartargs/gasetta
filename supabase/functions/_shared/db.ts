@@ -1,14 +1,3 @@
-// Supabase service-role client + typed upsert helpers.
-//
-// The service-role key bypasses RLS — that's intentional: Edge Functions are
-// trusted writers. Never ship the service key to the browser.
-//
-// Each helper:
-//   - upserts by the natural dedup key (node_id, or composite where node_id isn't unique to us)
-//   - returns the row id
-//   - flips summary_status='pending' when content changed (title/body/comments_count)
-//     so the summarizer re-processes stale threads.
-
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import type {
@@ -38,14 +27,6 @@ export function createServiceClient(): SupabaseClient {
 }
 
 // ── material-change gate ────────────────────────────────────────────────────
-// Policy for when an existing issue / PR / discussion should be re-summarised.
-// Re-summary triggers when ANY of these are true (else the row keeps its last
-// summary so the consensus stays stable across editions):
-//   - never summarised before (summarized_at IS NULL)
-//   - comments grew by >= MATERIAL_COMMENT_DELTA since last summary
-//   - state changed (open ↔ closed) since last summary
-//   - is_merged or is_answered flipped since last summary
-//   - >= MATERIAL_STALE_DAYS since last summary (safety net)
 const MATERIAL_COMMENT_DELTA = 3;
 const MATERIAL_STALE_DAYS = 7;
 
@@ -1041,11 +1022,6 @@ export async function markReleaseError(
   if (error) throw new Error(`markReleaseError ${releaseId}: ${error.message}`);
 }
 
-/**
- * Mark a release as deliberately skipped — no LLM call, no error. Used for
- * dependabot-only / empty / sub-trivial releases where a generated summary
- * would be either useless ("routine dep bumps") or misleading.
- */
 export async function markReleaseSkipped(
   db: SupabaseClient,
   releaseId: number,

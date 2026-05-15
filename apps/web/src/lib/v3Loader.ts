@@ -1,6 +1,3 @@
-// v3 loader — pulls live rows from Supabase and emits the flat GasettaV3 shape
-// the new design consumes. Replaces the old dataLoader entirely.
-
 import { supabase } from './supabase';
 import type { FounderRecord, ItemType, Sentiment, SummaryStatus } from '../components/atoms';
 import type {
@@ -230,9 +227,6 @@ function scoreForThread(
   resolved: boolean,
 ): number {
   let s = commentsCount * recencyDecay(updatedAtGh);
-  // Reward broad participation (diminishing returns) — two people in a
-  // 30-comment back-and-forth should beat 10 people in a 30-comment thread
-  // by less than the comment count alone implies.
   s += Math.log(participantsCount + 1) * 2;
   if (founderInvolved) s += 5;
   if (sentiment === 'contentious') s += 3;
@@ -248,9 +242,6 @@ function scoreForThread(
   ) {
     s += 2;
   }
-  // Resolved threads (merged PR, answered discussion, closed issue) fade
-  // faster: half the score so a 20-comment merged PR ranks like a 10-comment
-  // open one. Still visible if otherwise very hot, but doesn't dominate.
   if (resolved) s *= 0.5;
   return s;
 }
@@ -396,27 +387,17 @@ function toReleaseThread(r: DbRelease): Thread {
   };
 }
 
-/**
- * Score a release for "Hot" sorting. Most releases on neo-project repos are
- * auto-generated dependabot bump-notes — they have no comments and a body
- * that's just "Bump X from Y to Z by @dependabot[bot]" repeated, so they
- * shouldn't dominate the feed. Real, curated releases (AI-summarized, or
- * with substantive body content) score higher.
- */
 function releaseImportance(r: DbRelease): number {
   const body = (r.body ?? '').toLowerCase();
   const lines = body.split('\n').map((l) => l.trim()).filter(Boolean);
 
-  if (lines.length === 0) return 8; // empty body — neither boring nor interesting
+  if (lines.length === 0) return 8;
 
-  // Heuristic: count dep-bump lines (the dependabot signature).
   const bumpLines = lines.filter(
     (l) => /\bbump\b.+\bfrom\b.+\bto\b/.test(l) || l.includes('@dependabot'),
   ).length;
   const bumpRatio = bumpLines / lines.length;
 
-  // Mostly bumps → low priority. Some bumps mixed with real notes → middle.
-  // No bumps but a real body → mid-high. A real AI summary present → highest.
   if (bumpRatio > 0.5) return 4;
   const hasCuratedSummary = r.summary && r.summary.trim().length > 20;
   if (hasCuratedSummary) return 22;
@@ -452,7 +433,6 @@ interface ContributorBucket {
 }
 
 async function loadTopContributors(): Promise<TopContributor[]> {
-  // 14-day window — count of comments per author across all three comment tables.
   const since = new Date(Date.now() - 14 * 86_400_000).toISOString();
   const [iss, pr, disc] = await Promise.all([
     supabase
@@ -485,7 +465,6 @@ async function loadTopContributors(): Promise<TopContributor[]> {
     .map(([login, count]) => ({ login, count }))
     .sort((a, b) => b.count - a.count);
 
-  // Pin founders to the top, then top contributors by count.
   const founderEntries = buckets.filter((b) => FOUNDERS[b.login]);
   const others = buckets.filter((b) => !FOUNDERS[b.login]).slice(0, 8);
   const all = [...founderEntries, ...others].slice(0, 10);
@@ -643,7 +622,7 @@ function buildVersionActivity(
   return { windowLabel: `last ${VERSION_ACTIVITY_WINDOW_DAYS}d`, n3, n4 };
 }
 
-// ── N4 features (hardcoded — Neo-specific architectural decisions) ─────────
+// ── N4 features ─────────────────────────────────────────────────────────────
 
 const N4_FEATURES_STATIC: Omit<N4Feature, 'threadId'>[] = [
   {
@@ -691,7 +670,6 @@ const N4_FEATURES_STATIC: Omit<N4Feature, 'threadId'>[] = [
 ];
 
 function attachN4FeatureThreadIds(threads: Thread[]): N4Feature[] {
-  // Best-effort: link each hardcoded feature to a real thread in the same repo.
   return N4_FEATURES_STATIC.map((f) => {
     const candidate = threads.find(
       (t) => t.repo === f.repo && t.version === 'N4' && t.type !== 'release',
@@ -871,10 +849,6 @@ export async function loadGasettaV3(): Promise<GasettaV3> {
     ...releasesRaw.map(toReleaseThread),
   ];
 
-  // Optional: synthesize a commit-rollup card if there's been a flurry of recent
-  // merged-PR activity. Skipping for v0 of the rewrite — purely cosmetic; can add
-  // later by pulling from public.commits.
-
   const versionActivity = buildVersionActivity(issuesRaw, prsRaw, discRaw, releasesRaw);
   const n4Pct =
     versionActivity.n3.total + versionActivity.n4.total === 0
@@ -903,7 +877,7 @@ export async function loadGasettaV3(): Promise<GasettaV3> {
   };
 }
 
-// ── fallback (used while the first fetch is in flight) ─────────────────────
+// ── fallback ────────────────────────────────────────────────────────────────
 
 export const V3_FALLBACK: GasettaV3 = {
   threads: [],
@@ -928,5 +902,4 @@ export const V3_FALLBACK: GasettaV3 = {
   n4Features: [],
 };
 
-// Compose for CommitRow usage in types (currently unused but exported via Thread.commits)
 export type { CommitRow };

@@ -35,18 +35,12 @@ const markdownSanitizeSchema: typeof defaultSchema = {
   ],
 };
 
-/**
- * Renders text as GitHub-flavored markdown. Used for comment bodies and
- * founder pull-quotes — both are verbatim copies of GitHub comments, which
- * routinely use blockquotes, bold/italic, code, lists, and links.
- */
 function Markdown({ children }: { children: string }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeSchema]]}
       components={{
-        // Make all links open in a new tab and treat them as untrusted.
         a: ({ href, children: c }) => (
           <a href={href} target="_blank" rel="noopener noreferrer">
             {c}
@@ -67,10 +61,6 @@ export function ThreadPage() {
   const decoded = id ? decodeURIComponent(id) : '';
   const t = D.threads.find((x) => x.id === decoded);
 
-  // All hooks must run on every render — see "Rules of Hooks". Earlier this
-  // hook lived after the `if (!t) return` below, which crashed on a hard
-  // refresh: first render has no threads yet, hook isn't called; when threads
-  // arrive the early-return is skipped and the hook count jumps.
   const isCommentable = !!t && (t.type === 'issue' || t.type === 'pr' || t.type === 'discussion');
   const { data: comments, isLoading: commentsLoading } = useThreadComments(
     isCommentable ? t!.repo : null,
@@ -78,17 +68,12 @@ export function ThreadPage() {
     isCommentable ? t!.number : undefined,
   );
 
-  // Update the browser tab + OG meta for whatever thread is showing. Falls
-  // back to a generic title when the thread isn't loaded yet.
   usePageMeta({
     title: t ? `${t.title} · ${t.repo}${t.number != null ? ` #${t.number}` : ''} · Gasetta` : 'Thread · Gasetta',
     description: t?.summary || (t ? `Discussion on ${t.repo}.` : undefined),
   });
 
   if (!t) {
-    // While the v3 fetch is still in flight, render a skeleton instead of
-    // the "not found" card — otherwise hard-refreshes on /threads/foo
-    // flash a misleading error before the real data lands.
     if (isLoading) {
       return (
         <div className="thread">

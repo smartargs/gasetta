@@ -1,7 +1,3 @@
-// v3 data shape — the flat list-of-threads model the new design consumes.
-// Lives alongside the legacy types.ts (which the old loader still references
-// during transition). After cleanup we can fold this into types.ts.
-
 import type { FounderRecord, ItemType, Sentiment, SummaryStatus } from '../components/atoms';
 
 export type Version = 'N3' | 'N4';

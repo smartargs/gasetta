@@ -1,20 +1,3 @@
-// GitHub API client — Deno runtime.
-//
-// REST + GraphQL. Both authenticate with the same fine-grained PAT.
-// Rate-limit hygiene:
-//   - Respect Retry-After on 403/429 with rate-limit headers.
-//   - When X-RateLimit-Remaining drops low, sleep until X-RateLimit-Reset.
-//   - Conditional requests with ETag when the endpoint supports it (saves quota).
-//
-// Pagination:
-//   - REST: parse Link header for rel="next".
-//   - GraphQL: cursor (pageInfo.endCursor + hasNextPage).
-//
-// Errors:
-//   - 5xx → retry up to 3 times with backoff.
-//   - 422/404 → throw, caller decides whether it's fatal.
-//   - 401/403 (auth) → throw, fatal (run goes to status='error').
-
 import type {
   GhCommit,
   GhIssueComment,

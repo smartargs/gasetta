@@ -6,10 +6,6 @@
 > GitHub org — consensus chips, founder markers, and the state of every
 > active thread, refreshed every few hours.
 
-<p align="center">
-  <img src="./docs/screenshots/feed.png" alt="Gasetta feed view — ranked cards with consensus chips, sentiment, and founder markers" width="900" />
-</p>
-
 Gasetta reads the Neo blockchain's GitHub organisation every four hours
 and turns the raw firehose — issues, pull requests, discussions, releases,
 commits — into a scannable feed of summaries. Each card carries:
@@ -65,10 +61,6 @@ flowchart TB
 Each card opens to a **thread page** with the full consensus block: a
 multi-sentence summary, the consensus chip, key points, decisions reached
 in the thread, and a pulled-out founder quote when applicable.
-
-<p align="center">
-  <img src="./docs/screenshots/thread.png" alt="Gasetta thread page — full consensus block with key points, decisions, and a founder pull-quote" width="700" />
-</p>
 
 ---
 

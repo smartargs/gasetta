@@ -1,22 +1,9 @@
--- ─────────────────────────────────────────────────────────────────────────────
--- 0008_invoke_via_vault.sql — read pg_cron secrets from Supabase Vault.
---
--- Previously `gasetta.invoke()` read `functions_base_url` and
--- `service_role_key` from a plaintext `gasetta.config` table. Supabase's
--- official guidance (Scheduling Edge Functions, pg_net guide) is to keep
--- these in Vault instead — values stay encrypted at rest, backups carry
--- ciphertext only, and access is gated by Vault's own permission model.
---
--- After this migration, populate Vault on each environment:
+-- Read pg_cron invocation secrets from Supabase Vault instead of plaintext
+-- gasetta.config. Populate per environment:
 --
 --   select vault.create_secret(
 --     'https://<project-ref>.supabase.co/functions/v1', 'functions_base_url');
 --   select vault.create_secret('<service_role_jwt>', 'service_role_key');
---
--- The `gasetta.config` table is left in place but unused, so old rows
--- (if any) don't cause schema drift. Drop it in a later migration once
--- every environment has fully cut over.
--- ─────────────────────────────────────────────────────────────────────────────
 
 create or replace function gasetta.invoke(fn_name text)
 returns void
@@ -50,7 +37,7 @@ begin
       'Authorization', 'Bearer ' || service_key
     ),
     body := '{}'::jsonb,
-    timeout_milliseconds := 1500000  -- 25 min, matches Edge Function timeout
+    timeout_milliseconds := 1500000
   );
 end;
 $$;

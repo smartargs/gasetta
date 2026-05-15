@@ -1,6 +1,3 @@
-// Shared types — mostly GitHub API response shapes, narrowed to the fields we use.
-// We're intentionally permissive: the API returns more, we ignore it.
-
 export interface GhUser {
   login: string;
   id: number;

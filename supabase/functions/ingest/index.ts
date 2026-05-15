@@ -1,26 +1,3 @@
-// supabase/functions/ingest/index.ts
-//
-// Stage 1 of the pipeline: GitHub → Postgres. Boring and reliable.
-// Invoked by pg_cron once a day via pg_net, with the service-role key as bearer.
-//
-// Auth: handled by the Supabase platform, not by us.
-//   - Locally: config.toml sets `verify_jwt = false` for this function, so
-//     `supabase functions serve` accepts unauthenticated invocations.
-//   - In production: deploy with the default `verify_jwt = true`. The platform
-//     validates the bearer; pg_cron passes the service-role key from Vault.
-//     Outsiders without a valid key get 401 *before* our code runs.
-//
-// Flow:
-//   1. Open a runs row (status='running').
-//   3. Read the org_repos watermark. If empty, bootstrap to now() - 30d.
-//   4. List the org. Skip archived + forks. Upsert repos.
-//   5. For each repo, in series (gentle on rate limits):
-//        commits (since), releases (filter), issues+PRs (since), comments,
-//        PR detail + reviews + review-comments, discussions (GraphQL).
-//   6. Founder/role tagging happens at write time via _shared/founders.
-//   7. Close the run with status='ok' and advance the watermark.
-//   8. On error: status='error', error_text set, watermark NOT advanced.
-
 import { createServiceClient } from '../_shared/db.ts';
 import {
   closeRun,
@@ -51,21 +28,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 const ORG = Deno.env.get('GASETTA_ORG') ?? 'neo-project';
 const BOOTSTRAP_DAYS = Number(Deno.env.get('GASETTA_BOOTSTRAP_DAYS') ?? '30');
-// Cap per-run work so we never blow the function timeout. Tune later.
 const MAX_REPOS_PER_RUN = Number(Deno.env.get('GASETTA_MAX_REPOS_PER_RUN') ?? '60');
-// Bounded parallelism across repos. GitHub's quota is a per-hour budget
-// (5000 req/h authenticated), not a per-second rate — concurrency is limited
-// by total volume, not request bursts. 5 is safe; tune up on larger PATs.
-// CRITICAL: never parallelize calls within a single repo's pipeline (a hot PR
-// with hundreds of comments would otherwise hammer one endpoint). Each worker
-// handles one full repo at a time, serially.
 const REPO_CONCURRENCY = Math.max(1, Number(Deno.env.get('INGEST_REPO_CONCURRENCY') ?? '5'));
 
 Deno.serve(async (req) => {
-  // Service-role only. The gateway already validated the JWT signature; we
-  // additionally require the JWT's role claim is 'service_role' so that an
-  // authenticated user (anyone with a Supabase Auth account) can't trigger
-  // GitHub API + OpenAI calls on our dime.
   const denied = requireServiceRole(req);
   if (denied) return denied;
 
@@ -80,8 +46,6 @@ Deno.serve(async (req) => {
   const db = createServiceClient();
   const gh = new GitHubClient({ token: ghToken });
 
-  // Reap any orphaned `running` rows from earlier invocations that crashed,
-  // timed out, or were interrupted. Keeps the runs table honest.
   const reaped = await reapStaleRuns(db);
   if (reaped > 0) console.log(`reaped ${reaped} stale running run(s)`);
 
@@ -102,11 +66,6 @@ Deno.serve(async (req) => {
   try {
     const founders = await loadFoundersIndex(db);
 
-    // ── repos ──
-    // Sort: stalest watermark first, then any GitHub repos we've never seen
-    // (no DB row yet). This lets follow-up invocations finish backfills
-    // predictably — the worker spends its budget on repos that actually
-    // need it.
     const allRepos = await gh.listOrgRepos(ORG);
     const live = allRepos.filter((r) => !r.archived && !r.fork);
     const { data: existingRows } = await db
@@ -118,7 +77,6 @@ Deno.serve(async (req) => {
     const sorted = [...live].sort((a, b) => {
       const aw = wmByGhId.get(a.id) ?? null;
       const bw = wmByGhId.get(b.id) ?? null;
-      // null (never ingested) sorts before any real watermark.
       if (aw === null && bw === null) return 0;
       if (aw === null) return -1;
       if (bw === null) return 1;
@@ -167,11 +125,6 @@ Deno.serve(async (req) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Per-repo pipeline. Sequential within a repo (we don't want to slam one
-// repo's API endpoints), but the outer pool runs N of these in parallel.
-// One bad repo logs and returns zero counts; never fails the whole run.
-// ─────────────────────────────────────────────────────────────────────────────
 async function ingestOneRepo(
   db: SupabaseClient,
   gh: GitHubClient,
@@ -181,10 +134,6 @@ async function ingestOneRepo(
   r: GhRepo,
 ): Promise<{ reposSeen: number; itemsIngested: number }> {
   let itemsIngested = 0;
-  // Mark the moment we *start* this repo. We advance the per-repo watermark to
-  // this value only after the whole pipeline finishes — so any error short of
-  // a successful return leaves the watermark untouched, and the next
-  // invocation re-pulls from the same point.
   const repoWindowEnd = new Date().toISOString();
   try {
     const repo = await upsertRepo(db, r);

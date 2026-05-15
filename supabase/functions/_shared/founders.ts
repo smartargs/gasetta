@@ -1,13 +1,3 @@
-// Founder / core / community classification.
-//
-// Loaded once at the top of each run into a Map<login, role>.
-// `lookupRole(login)` is called for every author we encounter while ingesting;
-// the matching row gets is_founder + role set, and the parent thread gets
-// founder_involved=true if *any* comment/review author is a founder.
-//
-// "Marker, not filter" — we never skip ingesting non-founders. See
-// ARCHITECTURE.md §6.
-
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type Role = 'founder' | 'core' | 'community';

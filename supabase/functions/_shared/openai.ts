@@ -1,11 +1,3 @@
-// Minimal OpenAI chat-completions client for the summarize function.
-// Deno runtime, fetch-based, no SDK. JSON-object mode by default; we always
-// expect a JSON payload back.
-//
-// Cost tracking is computed from the usage block per response. Pricing values
-// below are USD per token (USD/1M divided by 1e6). Update them when OpenAI
-// changes prices; they're cheap and not load-bearing for correctness.
-
 interface ChatMessage {
   role: 'system' | 'user';
   content: string;
