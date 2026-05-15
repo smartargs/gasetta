@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGasettaV3 } from '../lib/v3Context';
+import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { FounderMark, Icon } from '../components/atoms';
 
 export function FoundersPage() {
   const D = useGasettaV3();
+  const isLoading = useGasettaLoading();
   const navigate = useNavigate();
   const [tab, setTab] = useState<'all' | 'erikzhang' | 'dahongfei'>('all');
   const items = D.founderActivity.filter((a) => tab === 'all' || a.login === tab);
@@ -32,12 +33,25 @@ export function FoundersPage() {
         </div>
       </div>
       {items.length === 0 ? (
-        <div className="state-card">
-          <div className="title">Nothing from this founder yet</div>
-          <div className="sub">
-            No recent comments. Try the other tab, or check back after the next refresh.
+        isLoading && D.founderActivity.length === 0 ? (
+          <div className="feed">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="skeleton-card">
+                <div className="skel-line" style={{ width: '30%', height: 14 }} />
+                <div className="skel-line" style={{ width: '90%' }} />
+                <div className="skel-line" style={{ width: '75%' }} />
+                <div className="skel-line" style={{ width: '50%' }} />
+              </div>
+            ))}
           </div>
-        </div>
+        ) : (
+          <div className="state-card">
+            <div className="title">Nothing from this founder yet</div>
+            <div className="sub">
+              No recent comments. Try the other tab, or check back after the next refresh.
+            </div>
+          </div>
+        )
       ) : (
         <div className="feed">
           {items.map((a, i) => {

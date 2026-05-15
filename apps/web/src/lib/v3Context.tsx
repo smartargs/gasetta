@@ -4,10 +4,6 @@ import { loadGasettaV3, V3_FALLBACK } from './v3Loader';
 import type { GasettaV3 } from '../data/v3types';
 
 const Ctx = createContext<GasettaV3>(V3_FALLBACK);
-// Separate context for fetch status so pages can distinguish "not found"
-// from "still loading". Without this, a hard-refresh on /threads/foo
-// briefly renders the empty fallback and the consumer flashes "Thread
-// not found" before the real data arrives.
 const LoadingCtx = createContext<boolean>(true);
 
 export function V3Provider({ children }: { children: ReactNode }) {

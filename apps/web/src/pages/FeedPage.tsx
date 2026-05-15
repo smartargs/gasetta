@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useGasettaV3 } from '../lib/v3Context';
+import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { LeftRail, type FeedFilters, type WindowKey } from '../components/LeftRail';
 import { RightRail } from '../components/RightRail';
 import { FeedCard } from '../components/FeedCard';
@@ -82,6 +82,7 @@ function filterThreads(
 
 export function FeedPage() {
   const D = useGasettaV3();
+  const isLoading = useGasettaLoading();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const filters = readFilters(params);
@@ -213,16 +214,29 @@ export function FeedPage() {
           </div>
         </div>
         {filtered.length === 0 ? (
-          <div className="state-card">
-            <div className="title">Nothing here yet</div>
-            <div className="sub">
-              {query
-                ? `No items match "${query}". Try a different search term, or clear the search.`
-                : windowKey !== 'all'
-                  ? `No items in the last ${windowKey}. Try a wider time window.`
-                  : 'No items match these filters. Try widening the type or version filter, or reset to All.'}
+          isLoading && D.threads.length === 0 ? (
+            <div className="feed">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="skeleton-card">
+                  <div className="skel-line" style={{ width: '35%', height: 12 }} />
+                  <div className="skel-line" style={{ width: '85%', height: 18 }} />
+                  <div className="skel-line" style={{ width: '95%' }} />
+                  <div className="skel-line" style={{ width: '60%' }} />
+                </div>
+              ))}
             </div>
-          </div>
+          ) : (
+            <div className="state-card">
+              <div className="title">Nothing here yet</div>
+              <div className="sub">
+                {query
+                  ? `No items match "${query}". Try a different search term, or clear the search.`
+                  : windowKey !== 'all'
+                    ? `No items in the last ${windowKey}. Try a wider time window.`
+                    : 'No items match these filters. Try widening the type or version filter, or reset to All.'}
+              </div>
+            </div>
+          )
         ) : (
           <>
             <div className="feed">

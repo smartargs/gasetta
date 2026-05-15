@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useGasettaV3 } from '../lib/v3Context';
+import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { Icon, VersionChip } from '../components/atoms';
 
 function statusClass(s: string): string {
@@ -15,11 +15,49 @@ function statusClass(s: string): string {
 
 export function VersionsPage() {
   const D = useGasettaV3();
+  const isLoading = useGasettaLoading();
   const navigate = useNavigate();
   const VA = D.versionActivity;
   const total = VA.n3.total + VA.n4.total;
   const n4pct = total === 0 ? 50 : Math.round((VA.n4.total / total) * 100);
   const n3pct = 100 - n4pct;
+
+  if (isLoading && total === 0 && D.n4Features.length === 0) {
+    return (
+      <div className="versions-shell">
+        <Link
+          className="back"
+          to="/"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate('/');
+          }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            color: 'var(--ink-3)',
+            fontSize: 13,
+            marginBottom: 18,
+          }}
+        >
+          <Icon name="chevron-left" size={14} /> Back to feed
+        </Link>
+        <div className="skeleton-card" style={{ marginBottom: 16 }}>
+          <div className="skel-line" style={{ width: '50%', height: 24 }} />
+          <div className="skel-line" style={{ width: '80%' }} />
+          <div className="skel-line" style={{ width: '100%', height: 16 }} />
+          <div className="skel-line" style={{ width: '70%' }} />
+        </div>
+        <div className="skeleton-card">
+          <div className="skel-line" style={{ width: '40%', height: 18 }} />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skel-line" style={{ width: `${60 + ((i * 7) % 30)}%` }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="versions-shell">

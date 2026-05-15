@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useGasettaV3 } from '../lib/v3Context';
+import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { Icon } from '../components/atoms';
 import type { RepoSummary, Thread } from '../data/v3types';
 
@@ -100,27 +100,45 @@ function RepoCard({ repo, threads, onOpen }: { repo: RepoSummary; threads: Threa
 
 export function ReposPage() {
   const D = useGasettaV3();
+  const isLoading = useGasettaLoading();
   const navigate = useNavigate();
+  const showSkeletons = isLoading && D.repos.length === 0;
   return (
     <div style={{ maxWidth: 1120, margin: '0 auto', padding: '28px 22px 80px' }}>
       <div className="founders-head">
         <div>
           <h1>Repositories</h1>
           <div className="sub">
-            {D.repos.length} repos in <span style={{ fontFamily: 'var(--mono)' }}>neo-project</span>.
-            Sorted by recent momentum.
+            {showSkeletons ? (
+              <>Loading repos in <span style={{ fontFamily: 'var(--mono)' }}>neo-project</span>…</>
+            ) : (
+              <>
+                {D.repos.length} repos in{' '}
+                <span style={{ fontFamily: 'var(--mono)' }}>neo-project</span>. Sorted by recent
+                momentum.
+              </>
+            )}
           </div>
         </div>
       </div>
       <div className="repos-grid cols-2">
-        {D.repos.map((r) => (
-          <RepoCard
-            key={r.name}
-            repo={r}
-            threads={D.threads}
-            onOpen={() => navigate(`/repos/${encodeURIComponent(r.name)}`)}
-          />
-        ))}
+        {showSkeletons
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="skeleton-card">
+                <div className="skel-line" style={{ width: '40%', height: 16 }} />
+                <div className="skel-line" style={{ width: '85%' }} />
+                <div className="skel-line" style={{ width: '70%' }} />
+                <div className="skel-line" style={{ width: '50%', height: 30 }} />
+              </div>
+            ))
+          : D.repos.map((r) => (
+              <RepoCard
+                key={r.name}
+                repo={r}
+                threads={D.threads}
+                onOpen={() => navigate(`/repos/${encodeURIComponent(r.name)}`)}
+              />
+            ))}
       </div>
     </div>
   );

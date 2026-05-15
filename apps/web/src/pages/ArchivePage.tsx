@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useGasettaV3 } from '../lib/v3Context';
+import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { Icon } from '../components/atoms';
 import type { ResolvedRow } from '../data/v3types';
 
@@ -15,6 +15,7 @@ const ICON_BY_OUTCOME: Record<ResolvedRow['outcome'], { name: 'pr' | 'check-circ
 
 export function ArchivePage() {
   const D = useGasettaV3();
+  const isLoading = useGasettaLoading();
   const navigate = useNavigate();
   const [outcome, setOutcome] = useState<OutcomeFilter>('all');
   const [q, setQ] = useState('');
@@ -255,12 +256,24 @@ export function ArchivePage() {
       </div>
 
       {items.length === 0 ? (
-        <div className="state-card" style={{ marginTop: 22 }}>
-          <div className="title">No matches</div>
-          <div className="sub">
-            Nothing matches that filter. Try clearing the search or picking a different outcome.
+        isLoading && D.recentlyResolved.length === 0 ? (
+          <div className="archive-group" style={{ marginTop: 22 }}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="skeleton-card" style={{ marginBottom: 8 }}>
+                <div className="skel-line" style={{ width: '20%', height: 12 }} />
+                <div className="skel-line" style={{ width: '80%' }} />
+                <div className="skel-line" style={{ width: '50%' }} />
+              </div>
+            ))}
           </div>
-        </div>
+        ) : (
+          <div className="state-card" style={{ marginTop: 22 }}>
+            <div className="title">No matches</div>
+            <div className="sub">
+              Nothing matches that filter. Try clearing the search or picking a different outcome.
+            </div>
+          </div>
+        )
       ) : (
         <>
           <Group label="Last 24 hours" list={groups.today} />
