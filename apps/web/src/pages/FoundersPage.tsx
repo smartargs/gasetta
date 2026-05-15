@@ -2,12 +2,16 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { FounderMark, Icon } from '../components/atoms';
-import { Markdown } from '../components/Markdown';
+import { Markdown, type ResolveIssueRef } from '../components/Markdown';
 
 export function FoundersPage() {
   const D = useGasettaV3();
   const isLoading = useGasettaLoading();
   const navigate = useNavigate();
+  const resolveIssueRef: ResolveIssueRef = (repo, num) => {
+    const match = D.threads.find((x) => x.repo === repo && x.number === num);
+    return match ? `/threads/${encodeURIComponent(match.id)}` : null;
+  };
   const [tab, setTab] = useState<'all' | 'erikzhang' | 'dahongfei'>('all');
   const items = D.founderActivity.filter((a) => tab === 'all' || a.login === tab);
 
@@ -57,6 +61,7 @@ export function FoundersPage() {
         <div className="feed">
           {items.map((a, i) => {
             const founder = D.founders[a.login] ?? null;
+            const quoteRepo = a.where.split(/\s+/)[0] || undefined;
             return (
               <div
                 key={i}
@@ -87,7 +92,9 @@ export function FoundersPage() {
                     if ((e.target as HTMLElement).closest('a')) e.stopPropagation();
                   }}
                 >
-                  <Markdown>{a.quote}</Markdown>
+                  <Markdown repo={quoteRepo} resolveIssueRef={resolveIssueRef}>
+                    {a.quote}
+                  </Markdown>
                 </div>
                 <div className="who">
                   on{' '}

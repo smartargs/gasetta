@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { useThreadComments, type RawComment } from '../lib/threadComments';
 import { usePageMeta } from '../lib/usePageMeta';
-import { Markdown } from '../components/Markdown';
+import { Markdown, type ResolveIssueRef } from '../components/Markdown';
 import {
   AITag,
   Avatar,
@@ -30,6 +30,11 @@ export function ThreadPage() {
     isCommentable ? t!.type : undefined,
     isCommentable ? t!.number : undefined,
   );
+
+  const resolveIssueRef: ResolveIssueRef = (repo, num) => {
+    const match = D.threads.find((x) => x.repo === repo && x.number === num);
+    return match ? `/threads/${encodeURIComponent(match.id)}` : null;
+  };
 
   usePageMeta({
     title: t ? `${t.title} · ${t.repo}${t.number != null ? ` #${t.number}` : ''} · Gasetta` : 'Thread · Gasetta',
@@ -224,7 +229,9 @@ export function ThreadPage() {
             <h3>Founder pull-quote</h3>
             <div className="founder-quote-block">
               <div className="body">
-                <Markdown>{t.founderQuote}</Markdown>
+                <Markdown repo={t.repo} resolveIssueRef={resolveIssueRef}>
+                  {t.founderQuote}
+                </Markdown>
               </div>
               <div className="who">
                 <span style={{ fontWeight: 600 }}>{founderName}</span>
@@ -249,7 +256,14 @@ export function ThreadPage() {
         </div>
       </div>
 
-      {isCommentable && <RawThread comments={comments} loading={commentsLoading} />}
+      {isCommentable && (
+        <RawThread
+          comments={comments}
+          loading={commentsLoading}
+          repo={t.repo}
+          resolveIssueRef={resolveIssueRef}
+        />
+      )}
     </div>
   );
 }
@@ -257,9 +271,13 @@ export function ThreadPage() {
 function RawThread({
   comments,
   loading,
+  repo,
+  resolveIssueRef,
 }: {
   comments: RawComment[] | undefined;
   loading: boolean;
+  repo: string;
+  resolveIssueRef: ResolveIssueRef;
 }) {
   const count = comments?.length ?? 0;
   const [order, setOrder] = useState<'new' | 'old'>('new');
@@ -304,13 +322,23 @@ function RawThread({
           No comments on this thread yet.
         </div>
       ) : (
-        sorted.map((c, i) => <Comment key={i} c={c} />)
+        sorted.map((c, i) => (
+          <Comment key={i} c={c} repo={repo} resolveIssueRef={resolveIssueRef} />
+        ))
       )}
     </div>
   );
 }
 
-function Comment({ c }: { c: RawComment }) {
+function Comment({
+  c,
+  repo,
+  resolveIssueRef,
+}: {
+  c: RawComment;
+  repo: string;
+  resolveIssueRef: ResolveIssueRef;
+}) {
   const profileHref = c.login !== 'unknown' ? `https://github.com/${c.login}` : null;
   return (
     <div className={`comment ${c.founder ? 'is-founder' : ''}`}>
@@ -399,7 +427,9 @@ function Comment({ c }: { c: RawComment }) {
           )}
         </div>
         <div className="body">
-          <Markdown>{c.body}</Markdown>
+          <Markdown repo={repo} resolveIssueRef={resolveIssueRef}>
+            {c.body}
+          </Markdown>
         </div>
       </div>
     </div>
