@@ -1313,8 +1313,6 @@ button{ font-family: inherit; }
   padding: 16px 18px 14px;
   display:flex; flex-direction:column; gap: 10px;
   cursor: pointer;
-  color: inherit;
-  text-decoration: none;
   transition: box-shadow .12s, border-color .12s, transform .08s;
 }
 .repo-card:hover{ box-shadow: var(--shadow-hover); border-color: var(--border-strong); transform: translateY(-1px); }
