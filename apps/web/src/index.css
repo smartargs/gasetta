@@ -1467,7 +1467,7 @@ button{ font-family: inherit; }
 
 .archive-row{
   display:grid;
-  grid-template-columns: 22px 86px 1fr auto;
+  grid-template-columns: 22px 86px minmax(0, 1fr) auto;
   gap: 12px;
   align-items: start;
   padding: 10px 6px;
@@ -1475,6 +1475,7 @@ button{ font-family: inherit; }
   cursor: pointer;
   position: relative;
 }
+.archive-row .body{ min-width: 0; }
 .archive-row:hover{ background: rgba(28,24,18,0.025); }
 .archive-row .ico{ color: var(--ink-3); padding-top: 2px; }
 .archive-row .ico.merged{ color: #6F42C1; }
@@ -1495,6 +1496,7 @@ button{ font-family: inherit; }
   font-size: 14px; color: var(--ink); font-weight: 500;
   line-height: 1.35;
   text-wrap: pretty;
+  overflow-wrap: anywhere;
 }
 .archive-row .body .one{
   font-size: 12.5px; color: var(--ink-3);
