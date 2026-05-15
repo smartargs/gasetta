@@ -1,11 +1,9 @@
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { useThreadComments, type RawComment } from '../lib/threadComments';
 import { usePageMeta } from '../lib/usePageMeta';
+import { Markdown } from '../components/Markdown';
 import {
   AITag,
   Avatar,
@@ -17,41 +15,6 @@ import {
   TypePill,
   VersionChip,
 } from '../components/atoms';
-
-const markdownSanitizeSchema: typeof defaultSchema = {
-  ...defaultSchema,
-  tagNames: [
-    ...(defaultSchema.tagNames ?? []),
-    'del',
-    's',
-    'sub',
-    'sup',
-    'kbd',
-    'mark',
-    'details',
-    'summary',
-    'ins',
-    'u',
-  ],
-};
-
-function Markdown({ children }: { children: string }) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeSchema]]}
-      components={{
-        a: ({ href, children: c }) => (
-          <a href={href} target="_blank" rel="noopener noreferrer">
-            {c}
-          </a>
-        ),
-      }}
-    >
-      {children}
-    </ReactMarkdown>
-  );
-}
 
 export function ThreadPage() {
   const D = useGasettaV3();
@@ -299,9 +262,39 @@ function RawThread({
   loading: boolean;
 }) {
   const count = comments?.length ?? 0;
+  const [order, setOrder] = useState<'new' | 'old'>('new');
+  const sorted = useMemo(() => {
+    if (!comments) return [];
+    if (order === 'old') return comments;
+    return [...comments].sort((a, b) => {
+      const at = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bt - at;
+    });
+  }, [comments, order]);
   return (
     <div className="raw-thread">
-      <h3>Raw thread{count > 0 ? ` · ${count} comments` : ''}</h3>
+      <div className="raw-thread-head">
+        <h3>Raw thread{count > 0 ? ` · ${count} comments` : ''}</h3>
+        {count > 1 && (
+          <div className="seg" role="tablist" aria-label="Comment order">
+            <button
+              type="button"
+              aria-pressed={order === 'new'}
+              onClick={() => setOrder('new')}
+            >
+              Newest
+            </button>
+            <button
+              type="button"
+              aria-pressed={order === 'old'}
+              onClick={() => setOrder('old')}
+            >
+              Oldest
+            </button>
+          </div>
+        )}
+      </div>
       {loading && count === 0 ? (
         <div style={{ padding: '12px 0', color: 'var(--ink-4)', fontSize: 13 }}>
           Loading comments…
@@ -311,7 +304,7 @@ function RawThread({
           No comments on this thread yet.
         </div>
       ) : (
-        comments!.map((c, i) => <Comment key={i} c={c} />)
+        sorted.map((c, i) => <Comment key={i} c={c} />)
       )}
     </div>
   );

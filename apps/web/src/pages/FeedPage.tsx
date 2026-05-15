@@ -73,7 +73,11 @@ function filterThreads(
   if (sort === 'discussed') {
     out = [...out].sort((a, b) => (b.comments ?? 0) - (a.comments ?? 0));
   } else if (sort === 'new') {
-    out = [...out]; // input order is by updated_at desc
+    out = [...out].sort((a, b) => {
+      const at = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const bt = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return bt - at;
+    });
   } else {
     out = [...out].sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0));
   }

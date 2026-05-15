@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { FounderMark, Icon } from '../components/atoms';
+import { Markdown } from '../components/Markdown';
 
 export function FoundersPage() {
   const D = useGasettaV3();
@@ -80,7 +81,14 @@ export function FoundersPage() {
                     <span className="when">· {a.when}</span>
                   </div>
                 </div>
-                <div className="quote">{a.quote}</div>
+                <div
+                  className="quote"
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('a')) e.stopPropagation();
+                  }}
+                >
+                  <Markdown>{a.quote}</Markdown>
+                </div>
                 <div className="who">
                   on{' '}
                   <span style={{ color: 'var(--ink)', marginLeft: 4 }}>{a.whereTitle}</span>

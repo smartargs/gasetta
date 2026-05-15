@@ -776,6 +776,17 @@ button{ font-family: inherit; }
   border-left: 3px solid var(--founder-edge);
   margin: 6px 0;
 }
+.card.founder-quote .quote p{ margin: 0 0 6px; }
+.card.founder-quote .quote p:last-child{ margin-bottom: 0; }
+.card.founder-quote .quote ul,
+.card.founder-quote .quote ol{ margin: 4px 0 6px; padding-left: 18px; }
+.card.founder-quote .quote blockquote{
+  margin: 4px 0;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+  color: var(--ink-2);
+}
+.card.founder-quote .quote a{ color: var(--neo-2); }
 .card.founder-quote .who{
   display:flex; align-items:center; gap: 8px;
   font-size: 12px; color: var(--ink-3);
@@ -1143,6 +1154,28 @@ button{ font-family: inherit; }
   color: var(--ink-4);
   margin: 12px 0;
 }
+.raw-thread-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.raw-thread-head h3{ margin: 12px 0; }
+.raw-thread-head .seg{ display: flex; gap: 2px; }
+.raw-thread-head .seg button{
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 5px 9px;
+  font-size: 12px;
+  color: var(--ink-3);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.raw-thread-head .seg button:hover{ background: rgba(28,24,18,0.04); color: var(--ink); }
+.raw-thread-head .seg button[aria-pressed="true"]{ background: rgba(28,24,18,0.06); color: var(--ink); }
 .comment{
   display: grid;
   grid-template-columns: 28px 1fr;

@@ -8,6 +8,7 @@ export interface RawComment {
   name: string;
   initials: string;
   when: string;
+  createdAt: string | null;
   body: string;
   role: 'founder' | 'core' | 'community';
   founder: boolean;
@@ -110,6 +111,7 @@ export async function fetchThreadComments(
       name,
       initials,
       when: relTime(c.created_at_gh),
+      createdAt: c.created_at_gh,
       body: c.body,
       role,
       founder: role === 'founder',
