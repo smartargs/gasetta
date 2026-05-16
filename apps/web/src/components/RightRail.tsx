@@ -28,7 +28,7 @@ export function RightRail({
           arguing for what, where founders weighed in, and what's been decided.
         </p>
         <p style={{ fontSize: 13 }}>
-          Not affiliated with Neo or NGD. Built by the community —{' '}
+          Built by the community —{' '}
           <a
             className="link"
             href="https://github.com/smartargs/gasetta"

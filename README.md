@@ -247,16 +247,6 @@ no `--no-verify`.
 
 ---
 
-## Not affiliated with Neo
-
-Gasetta is an independent, community-built project running at
-[gasetta.com](https://www.gasetta.com). It is not affiliated with Neo
-Global Development, the Neo Foundation, or any official Neo entity. AI
-summaries are best-effort and may contain errors — click through to
-GitHub to verify anything material.
-
----
-
 ## License
 
 [MIT](./LICENSE).
@@ -274,5 +264,5 @@ GitHub to verify anything material.
 </p>
 
 <p align="center">
-  <sub>Built by the community. Not affiliated with Neo or NGD.</sub>
+  <sub>Built by the community.</sub>
 </p>

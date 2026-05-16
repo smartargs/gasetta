@@ -57,7 +57,7 @@ export function AboutPage() {
         of Neo's two founders participated.
       </p>
       <p>
-        Not affiliated with Neo or NGD. Open-source, community-built — source at{' '}
+        Open-source, community-built — source at{' '}
         <a
           href="https://github.com/smartargs/gasetta"
           target="_blank"

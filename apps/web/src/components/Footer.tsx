@@ -35,8 +35,7 @@ export function Footer() {
           <span className="muted">refreshes every 4h</span>
         </nav>
         <div className="footer-disclaimer">
-          Pulls public activity from <code>github.com/neo-project</code>.
-          Not affiliated with the NEO Foundation. MIT licensed.
+          Pulls public activity from <code>github.com/neo-project</code>. MIT licensed.
         </div>
       </div>
     </footer>
