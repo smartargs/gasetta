@@ -1138,6 +1138,7 @@ button{ font-family: inherit; }
   font-size: 14px; line-height: 1.55;
   color: #2D2300;
   padding-left: 16px;
+  overflow-wrap: anywhere;
 }
 .founder-quote-block .who{
   margin-top: 8px;
@@ -1178,7 +1179,7 @@ button{ font-family: inherit; }
 .raw-thread-head .seg button[aria-pressed="true"]{ background: rgba(28,24,18,0.06); color: var(--ink); }
 .comment{
   display: grid;
-  grid-template-columns: 28px 1fr;
+  grid-template-columns: 28px minmax(0, 1fr);
   gap: 10px;
   padding: 12px 0;
   border-top: 1px solid var(--hairline);
@@ -1216,7 +1217,7 @@ button{ font-family: inherit; }
   text-decoration: none;
 }
 .thread .head .author-line a:hover{ text-decoration: underline; color: var(--neo-2); }
-.comment .body{ font-size: 14px; color: var(--ink-2); margin-top: 2px; line-height: 1.55; }
+.comment .body{ font-size: 14px; color: var(--ink-2); margin-top: 2px; line-height: 1.55; min-width: 0; overflow-wrap: anywhere; }
 .comment.is-founder{ background: linear-gradient(to right, rgba(255,232,154,0.16), transparent 60%); margin: 0 -10px; padding-left: 10px; padding-right: 10px; border-radius: 6px; }
 
 /* Markdown inside comment bodies and founder-quote pull-quotes. */
@@ -1334,11 +1335,11 @@ button{ font-family: inherit; }
 /* ───── /repos grid ───── */
 .repos-grid{
   display:grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
   gap: 14px;
 }
-.repos-grid.cols-2{ grid-template-columns: 1fr 1fr; }
-@media (max-width: 780px){ .repos-grid.cols-2{ grid-template-columns: 1fr; } }
+.repos-grid.cols-2{ grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 780px){ .repos-grid.cols-2{ grid-template-columns: minmax(0, 1fr); } }
 .repo-card{
   background: var(--card);
   border: 1px solid var(--border);
@@ -1347,14 +1348,17 @@ button{ font-family: inherit; }
   display:flex; flex-direction:column; gap: 10px;
   cursor: pointer;
   transition: box-shadow .12s, border-color .12s, transform .08s;
+  min-width: 0;
 }
 .repo-card:hover{ box-shadow: var(--shadow-hover); border-color: var(--border-strong); transform: translateY(-1px); }
-.repo-card .top{ display:flex; align-items:center; gap: 10px; }
+.repo-card .top{ display:flex; align-items:center; gap: 10px; min-width: 0; }
 .repo-card .name{
   font-family: var(--mono);
   font-size: 14px;
   font-weight: 600;
   color: var(--ink);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .repo-card .name .org{ color: var(--ink-4); font-weight: 500; }
 .repo-card .desc{
@@ -1369,6 +1373,7 @@ button{ font-family: inherit; }
   display:flex; gap: 14px;
   font-size: 12px; color: var(--ink-3);
   font-variant-numeric: tabular-nums;
+  flex-wrap: wrap;
 }
 .repo-card .counts b{ color: var(--ink); font-weight: 600; margin-right: 4px; }
 .repo-card .counts .ico{ width: 12px; height: 12px; opacity: 0.7; margin-right: 4px; vertical-align: -1px; }
@@ -1378,8 +1383,13 @@ button{ font-family: inherit; }
   border-top: 1px solid var(--hairline);
   padding-top: 8px; margin-top: 2px;
   display:flex; gap: 6px; align-items: center;
+  min-width: 0;
 }
-.repo-card .latest .tt{ color: var(--ink-2); overflow:hidden; text-overflow: ellipsis; white-space: nowrap; }
+.repo-card .latest .tt{
+  color: var(--ink-2);
+  overflow:hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex: 1; min-width: 0;
+}
 .repo-card .momentum{
   display:inline-flex; align-items:center; gap: 5px;
   font-size: 11px; font-weight: 500;
@@ -1475,6 +1485,29 @@ button{ font-family: inherit; }
   cursor: pointer;
   position: relative;
 }
+@media (max-width: 600px){
+  .archive-row{
+    grid-template-columns: 22px minmax(0, 1fr);
+    grid-template-areas:
+      "ico body"
+      "ico outcome"
+      "ico meta";
+    column-gap: 10px;
+    row-gap: 4px;
+  }
+  .archive-row > .ico{ grid-area: ico; }
+  .archive-row > .body{ grid-area: body; }
+  .archive-row > .outcome{ grid-area: outcome; justify-self: start; }
+  .archive-row > .meta-r{
+    grid-area: meta;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    text-align: left;
+    min-width: 0;
+    gap: 4px 10px;
+  }
+}
 .archive-row .body{ min-width: 0; }
 .archive-row:hover{ background: rgba(28,24,18,0.025); }
 .archive-row .ico{ color: var(--ink-3); padding-top: 2px; }
@@ -1542,9 +1575,12 @@ button{ font-family: inherit; }
 .versions-hero .sub{ font-size: 14px; color: var(--ink-3); margin: 0 0 18px; }
 .versions-split-row{
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
   margin-bottom: 10px;
+}
+@media (max-width: 820px){
+  .versions-split-row{ grid-template-columns: minmax(0, 1fr); }
 }
 .versions-stat{
   background: var(--bg-tint);
@@ -1635,6 +1671,7 @@ button{ font-family: inherit; }
   font-weight: 500;
   font-family: var(--sans);
   white-space: nowrap;
+  align-self: start;
 }
 .feature-status.leaning{ background: var(--c-leaning-bg); color: var(--c-leaning-fg); }
 .feature-status.review{  background: var(--c-decided-bg);  color: var(--c-decided-fg); }
@@ -1656,11 +1693,11 @@ button{ font-family: inherit; }
   margin-bottom: 18px;
   display:flex; flex-direction: column; gap: 12px;
 }
-.repo-head .row1{ display:flex; align-items:center; gap: 12px; flex-wrap: wrap; }
-.repo-head .row1 .full{ font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--ink); }
+.repo-head .row1{ display:flex; align-items:center; gap: 12px; flex-wrap: wrap; min-width: 0; }
+.repo-head .row1 .full{ font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
 .repo-head .row1 a.repo-head-link{ text-decoration: none; }
 .repo-head .row1 a.repo-head-link:hover{ text-decoration: underline; text-underline-offset: 3px; }
-.repo-head .desc{ font-size: 14px; color: var(--ink-2); max-width: 720px; }
+.repo-head .desc{ font-size: 14px; color: var(--ink-2); max-width: 720px; overflow-wrap: anywhere; }
 .repo-head .stats{ display:flex; gap: 22px; flex-wrap: wrap; }
 .repo-head .stats .stat{ display:flex; flex-direction:column; }
 .repo-head .stats .stat .v{ font-size: 18px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -1710,4 +1747,9 @@ button{ font-family: inherit; }
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
 }
+.skel-avatar{
+  width: 28px; height: 28px; border-radius: 50%;
+}
+.comment.comment-skel{ border-top-color: transparent; }
+.comment.comment-skel + .comment.comment-skel{ border-top-color: var(--hairline); }
 @keyframes shimmer{ 0%{ background-position: 200% 0; } 100%{ background-position: -200% 0; } }

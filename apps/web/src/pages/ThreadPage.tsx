@@ -42,7 +42,7 @@ export function ThreadPage() {
   });
 
   if (!t) {
-    if (isLoading) {
+    if (isLoading && D.threads.length === 0) {
       return (
         <div className="thread">
           <Link
@@ -55,14 +55,7 @@ export function ThreadPage() {
           >
             <Icon name="chevron-left" size={14} /> Back to feed
           </Link>
-          <div className="skeleton-card" style={{ marginTop: 16 }}>
-            <div className="skel-line" style={{ width: '40%', height: 14 }} />
-            <div className="skel-line" style={{ width: '85%', height: 22 }} />
-            <div className="skel-line" style={{ width: '70%', height: 22 }} />
-            <div className="skel-line" style={{ width: '95%' }} />
-            <div className="skel-line" style={{ width: '90%' }} />
-            <div className="skel-line" style={{ width: '60%' }} />
-          </div>
+          <ThreadSkeleton />
         </div>
       );
     }
@@ -314,9 +307,7 @@ function RawThread({
         )}
       </div>
       {loading && count === 0 ? (
-        <div style={{ padding: '12px 0', color: 'var(--ink-4)', fontSize: 13 }}>
-          Loading comments…
-        </div>
+        <CommentSkeletonList />
       ) : count === 0 ? (
         <div style={{ padding: '12px 0', color: 'var(--ink-4)', fontSize: 13 }}>
           No comments on this thread yet.
@@ -327,6 +318,61 @@ function RawThread({
         ))
       )}
     </div>
+  );
+}
+
+function ThreadSkeleton() {
+  return (
+    <>
+      <div className="head">
+        <div className="meta">
+          <div className="skel-line" style={{ width: 60, height: 18, borderRadius: 999 }} />
+          <div className="skel-line" style={{ width: 140, height: 14 }} />
+          <div className="skel-line" style={{ width: 80, height: 12 }} />
+        </div>
+        <div className="skel-line" style={{ width: '90%', height: 26 }} />
+        <div className="skel-line" style={{ width: '65%', height: 26 }} />
+        <div className="skel-line" style={{ width: 160, height: 12 }} />
+      </div>
+      <div className="consensus-block">
+        <div className="skel-line" style={{ width: 180, height: 12, marginBottom: 12 }} />
+        <div className="skel-line" style={{ width: '95%', height: 22, marginBottom: 6 }} />
+        <div className="skel-line" style={{ width: '78%', height: 22, marginBottom: 18 }} />
+        <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+          <div className="skel-line" style={{ width: 90, height: 22, borderRadius: 999 }} />
+          <div className="skel-line" style={{ width: 80, height: 22, borderRadius: 999 }} />
+        </div>
+        <div className="skel-line" style={{ width: 110, height: 12, marginBottom: 8 }} />
+        <div className="skel-line" style={{ width: '92%', marginBottom: 6 }} />
+        <div className="skel-line" style={{ width: '86%', marginBottom: 6 }} />
+        <div className="skel-line" style={{ width: '70%' }} />
+      </div>
+      <div className="raw-thread">
+        <div className="skel-line" style={{ width: 200, height: 14, margin: '12px 0' }} />
+        <CommentSkeletonList />
+      </div>
+    </>
+  );
+}
+
+function CommentSkeletonList() {
+  return (
+    <>
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="comment comment-skel">
+          <div className="skel-line skel-avatar" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div className="skel-line" style={{ width: 90, height: 12 }} />
+              <div className="skel-line" style={{ width: 60, height: 12 }} />
+            </div>
+            <div className="skel-line" style={{ width: '95%' }} />
+            <div className="skel-line" style={{ width: '85%' }} />
+            <div className="skel-line" style={{ width: '60%' }} />
+          </div>
+        </div>
+      ))}
+    </>
   );
 }
 
