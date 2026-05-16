@@ -680,15 +680,19 @@ function attachN4FeatureThreadIds(threads: Thread[]): N4Feature[] {
 
 // ── founder activity ───────────────────────────────────────────────────────
 
-interface FounderCommentRow {
+import type { FounderActivityKind } from '../data/v3types';
+
+interface FounderActivityRow {
+  kind: FounderActivityKind;
   body: string;
   author_login: string | null;
   created_at_gh: string | null;
-  parent: { number: number; title: string; repo: string } | null;
+  parent: { number: number; title: string; repo: string };
 }
 
 async function loadFounderActivity(threads: Thread[]) {
-  const [iss, pr, disc] = await Promise.all([
+  const founderLogins = Object.keys(FOUNDERS);
+  const [issC, prC, discC, issA, prA, discA] = await Promise.all([
     supabase
       .from('issue_comments')
       .select('body, author_login, created_at_gh, issues:issue_id(number, title, repos:repo_id(name))')
@@ -725,44 +729,115 @@ async function loadFounderActivity(threads: Thread[]) {
         created_at_gh: string | null;
         discussions: { number: number; title: string; repos: { name: string } | null } | null;
       }>>(),
+    supabase
+      .from('issues')
+      .select('number, title, body, author_login, created_at_gh, repos:repo_id(name)')
+      .in('author_login', founderLogins)
+      .order('created_at_gh', { ascending: false })
+      .limit(40)
+      .returns<Array<{
+        number: number;
+        title: string;
+        body: string | null;
+        author_login: string | null;
+        created_at_gh: string | null;
+        repos: { name: string } | null;
+      }>>(),
+    supabase
+      .from('pull_requests')
+      .select('number, title, body, author_login, created_at_gh, repos:repo_id(name)')
+      .in('author_login', founderLogins)
+      .order('created_at_gh', { ascending: false })
+      .limit(40)
+      .returns<Array<{
+        number: number;
+        title: string;
+        body: string | null;
+        author_login: string | null;
+        created_at_gh: string | null;
+        repos: { name: string } | null;
+      }>>(),
+    supabase
+      .from('discussions')
+      .select('number, title, body, author_login, created_at_gh, repos:repo_id(name)')
+      .in('author_login', founderLogins)
+      .order('created_at_gh', { ascending: false })
+      .limit(40)
+      .returns<Array<{
+        number: number;
+        title: string;
+        body: string | null;
+        author_login: string | null;
+        created_at_gh: string | null;
+        repos: { name: string } | null;
+      }>>(),
   ]);
 
-  const flat: FounderCommentRow[] = [];
-  for (const row of iss.data ?? []) {
+  const flat: FounderActivityRow[] = [];
+  for (const row of issC.data ?? []) {
     if (!row.issues) continue;
     flat.push({
+      kind: 'comment',
       body: row.body,
       author_login: row.author_login,
       created_at_gh: row.created_at_gh,
       parent: { number: row.issues.number, title: row.issues.title, repo: row.issues.repos?.name ?? 'unknown' },
     });
   }
-  for (const row of pr.data ?? []) {
+  for (const row of prC.data ?? []) {
     if (!row.pull_requests) continue;
     flat.push({
+      kind: 'comment',
       body: row.body,
       author_login: row.author_login,
       created_at_gh: row.created_at_gh,
       parent: { number: row.pull_requests.number, title: row.pull_requests.title, repo: row.pull_requests.repos?.name ?? 'unknown' },
     });
   }
-  for (const row of disc.data ?? []) {
+  for (const row of discC.data ?? []) {
     if (!row.discussions) continue;
     flat.push({
+      kind: 'comment',
       body: row.body,
       author_login: row.author_login,
       created_at_gh: row.created_at_gh,
       parent: { number: row.discussions.number, title: row.discussions.title, repo: row.discussions.repos?.name ?? 'unknown' },
     });
   }
+  for (const row of issA.data ?? []) {
+    flat.push({
+      kind: 'issue',
+      body: row.body ?? '',
+      author_login: row.author_login,
+      created_at_gh: row.created_at_gh,
+      parent: { number: row.number, title: row.title, repo: row.repos?.name ?? 'unknown' },
+    });
+  }
+  for (const row of prA.data ?? []) {
+    flat.push({
+      kind: 'pr',
+      body: row.body ?? '',
+      author_login: row.author_login,
+      created_at_gh: row.created_at_gh,
+      parent: { number: row.number, title: row.title, repo: row.repos?.name ?? 'unknown' },
+    });
+  }
+  for (const row of discA.data ?? []) {
+    flat.push({
+      kind: 'discussion',
+      body: row.body ?? '',
+      author_login: row.author_login,
+      created_at_gh: row.created_at_gh,
+      parent: { number: row.number, title: row.title, repo: row.repos?.name ?? 'unknown' },
+    });
+  }
 
   return flat
     .filter((f) => f.author_login && FOUNDERS[f.author_login])
     .sort((a, b) => Date.parse(b.created_at_gh ?? '0') - Date.parse(a.created_at_gh ?? '0'))
-    .slice(0, 60)
+    .slice(0, 80)
     .map((f) => {
-      // Find the matching thread for navigation
-      const parent = f.parent!;
+      const parent = f.parent;
       const candidate = threads.find(
         (t) =>
           t.repo === parent.repo &&
@@ -771,6 +846,7 @@ async function loadFounderActivity(threads: Thread[]) {
       );
       return {
         login: f.author_login!,
+        kind: f.kind,
         threadId: candidate?.id ?? '',
         where: `${parent.repo} #${parent.number}`,
         whereTitle: parent.title,

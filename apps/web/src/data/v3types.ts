@@ -73,8 +73,11 @@ export interface ResolvedRow {
   founderLogin?: string;
 }
 
+export type FounderActivityKind = 'comment' | 'issue' | 'pr' | 'discussion';
+
 export interface FounderActivityItem {
   login: string;
+  kind: FounderActivityKind;
   threadId: string;
   where: string;
   whereTitle: string;

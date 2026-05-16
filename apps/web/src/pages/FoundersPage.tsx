@@ -109,7 +109,13 @@ export function FoundersPage() {
                   </Markdown>
                 </div>
                 <div className="who">
-                  on{' '}
+                  {a.kind === 'comment'
+                    ? 'on'
+                    : a.kind === 'issue'
+                      ? 'opened issue'
+                      : a.kind === 'pr'
+                        ? 'opened PR'
+                        : 'started discussion'}{' '}
                   <span style={{ color: 'var(--ink)', marginLeft: 4 }}>{a.whereTitle}</span>
                   <span
                     style={{
