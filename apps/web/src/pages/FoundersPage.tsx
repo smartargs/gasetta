@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
 import { FounderMark, Icon } from '../components/atoms';
 import { Markdown, type ResolveIssueRef } from '../components/Markdown';
+
+const PAGE_SIZE = 15;
 
 export function FoundersPage() {
   const D = useGasettaV3();
@@ -15,14 +17,23 @@ export function FoundersPage() {
   const [tab, setTab] = useState<'all' | 'erikzhang' | 'dahongfei'>('all');
   const items = D.founderActivity.filter((a) => tab === 'all' || a.login === tab);
 
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [tab]);
+  const visible = items.slice(0, visibleCount);
+  const hasMore = items.length > visible.length;
+  const loadMore = () =>
+    setVisibleCount((n) => Math.min(n + PAGE_SIZE, items.length));
+
   return (
     <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 22px 80px' }}>
       <div className="founders-head">
         <div>
           <h1>Founder activity</h1>
           <div className="sub">
-            Comments and reviews from Neo's founders, pulled out of the firehose.{' '}
-            {D.founderActivity.length} this period.
+            Comments and reviews from Neo's founders. Showing the {D.founderActivity.length} most
+            recent.
           </div>
         </div>
         <div className="tab-strip">
@@ -58,8 +69,9 @@ export function FoundersPage() {
           </div>
         )
       ) : (
+        <>
         <div className="feed">
-          {items.map((a, i) => {
+          {visible.map((a, i) => {
             const founder = D.founders[a.login] ?? null;
             const quoteRepo = a.where.split(/\s+/)[0] || undefined;
             return (
@@ -115,6 +127,17 @@ export function FoundersPage() {
             );
           })}
         </div>
+        {hasMore && (
+          <div className="load-more-bar">
+            <button type="button" className="load-more-btn" onClick={loadMore}>
+              Load {Math.min(PAGE_SIZE, items.length - visible.length)} more
+            </button>
+            <span className="load-more-hint">
+              Showing {visible.length} of {items.length}
+            </span>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

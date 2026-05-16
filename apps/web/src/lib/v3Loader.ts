@@ -694,7 +694,7 @@ async function loadFounderActivity(threads: Thread[]) {
       .select('body, author_login, created_at_gh, issues:issue_id(number, title, repos:repo_id(name))')
       .eq('is_founder', true)
       .order('created_at_gh', { ascending: false })
-      .limit(6)
+      .limit(40)
       .returns<Array<{
         body: string;
         author_login: string | null;
@@ -706,7 +706,7 @@ async function loadFounderActivity(threads: Thread[]) {
       .select('body, author_login, created_at_gh, pull_requests:pr_id(number, title, repos:repo_id(name))')
       .eq('is_founder', true)
       .order('created_at_gh', { ascending: false })
-      .limit(6)
+      .limit(40)
       .returns<Array<{
         body: string;
         author_login: string | null;
@@ -718,7 +718,7 @@ async function loadFounderActivity(threads: Thread[]) {
       .select('body, author_login, created_at_gh, discussions:discussion_id(number, title, repos:repo_id(name))')
       .eq('is_founder', true)
       .order('created_at_gh', { ascending: false })
-      .limit(6)
+      .limit(40)
       .returns<Array<{
         body: string;
         author_login: string | null;
@@ -759,7 +759,7 @@ async function loadFounderActivity(threads: Thread[]) {
   return flat
     .filter((f) => f.author_login && FOUNDERS[f.author_login])
     .sort((a, b) => Date.parse(b.created_at_gh ?? '0') - Date.parse(a.created_at_gh ?? '0'))
-    .slice(0, 12)
+    .slice(0, 60)
     .map((f) => {
       // Find the matching thread for navigation
       const parent = f.parent!;
