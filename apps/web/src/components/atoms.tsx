@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, SVGProps } from 'react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -22,7 +22,10 @@ export type IconName =
   | 'dot'
   | 'list'
   | 'flame'
-  | 'check-circle';
+  | 'check-circle'
+  | 'share'
+  | 'link'
+  | 'x';
 
 interface IconProps extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -147,6 +150,24 @@ export function Icon({ name, size = 14, ...rest }: IconProps) {
       return (
         <svg {...common}>
           <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16Zm3.78-9.72-4.25 4.25a.75.75 0 0 1-1.06 0L4.22 8.28a.75.75 0 1 1 1.06-1.06L7 8.94l3.72-3.72a.75.75 0 1 1 1.06 1.06Z" />
+        </svg>
+      );
+    case 'share':
+      return (
+        <svg {...common}>
+          <path d="M2.75 9a.75.75 0 0 1 .75.75v2.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-2.5A.75.75 0 0 1 2.75 9Zm4.5-6.19L5.53 4.53a.75.75 0 0 1-1.06-1.06l2.75-2.75a.75.75 0 0 1 1.06 0l2.75 2.75a.75.75 0 0 1-1.06 1.06L8.75 2.81v6.69a.75.75 0 0 1-1.5 0Z" />
+        </svg>
+      );
+    case 'link':
+      return (
+        <svg {...common}>
+          <path d="M7.775 3.275a.75.75 0 0 0 1.06 1.06l1.25-1.25a2 2 0 1 1 2.83 2.83l-2.5 2.5a2 2 0 0 1-2.83 0 .75.75 0 0 0-1.06 1.06 3.5 3.5 0 0 0 4.95 0l2.5-2.5a3.5 3.5 0 0 0-4.95-4.95l-1.25 1.25Zm-4.69 9.64a2 2 0 0 1 0-2.83l2.5-2.5a2 2 0 0 1 2.83 0 .75.75 0 0 0 1.06-1.06 3.5 3.5 0 0 0-4.95 0l-2.5 2.5a3.5 3.5 0 0 0 4.95 4.95l1.25-1.25a.75.75 0 0 0-1.06-1.06l-1.25 1.25a2 2 0 0 1-2.83 0Z" />
+        </svg>
+      );
+    case 'x':
+      return (
+        <svg {...common}>
+          <path d="M9.294 6.928 14.357 1h-1.2L8.762 6.147 5.25 1H1.2l5.31 7.784L1.2 15h1.2l4.642-5.436L10.75 15h4.05L9.294 6.928Zm-1.644 1.924-.538-.777L2.832 1.91h1.843l3.454 4.992.538.777 4.49 6.489h-1.843L7.65 8.852Z" />
         </svg>
       );
     default:
@@ -335,6 +356,82 @@ export function SkeletonCard({ style }: { style?: CSSProperties }) {
       <div className="skel-line" style={{ width: '88%', height: 14 }} />
       <div className="skel-line" style={{ width: '70%', height: 10 }} />
       <div className="skel-line" style={{ width: '30%', height: 10 }} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Share menu — copy link or post to X. `text` seeds the tweet (e.g. the summary).
+
+export function ShareMenu({ url, text }: { url: string; text?: string }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  const tweetHref = (() => {
+    const params = new URLSearchParams({ url });
+    if (text) params.set('text', text.length > 240 ? `${text.slice(0, 237)}…` : text);
+    return `https://twitter.com/intent/tweet?${params.toString()}`;
+  })();
+
+  return (
+    <div className="share-menu" ref={ref}>
+      <button
+        type="button"
+        className="share-trigger"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        title="Share"
+      >
+        <Icon name="share" size={12} />
+        <span>Share</span>
+      </button>
+      {open && (
+        <div className="share-pop" role="menu">
+          <a
+            className="share-opt"
+            href={tweetHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+          >
+            <Icon name="x" size={13} />
+            <span>Post on X</span>
+          </a>
+          <button type="button" className="share-opt" role="menuitem" onClick={copyLink}>
+            <Icon name={copied ? 'check' : 'link'} size={13} />
+            <span>{copied ? 'Link copied' : 'Copy link'}</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   FounderMark,
   Icon,
   SentimentMeter,
+  ShareMenu,
   StatePill,
   TypePill,
   VersionChip,
@@ -147,6 +148,10 @@ export function ThreadPage() {
                 <span>GitHub</span>
               </a>
             )}
+            <ShareMenu
+              url={typeof window !== 'undefined' ? window.location.href : ''}
+              text={t.summary || t.title}
+            />
           </span>
         </div>
         <h1>
