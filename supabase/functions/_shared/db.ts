@@ -670,6 +670,7 @@ export interface PendingItem {
   is_merged?: boolean;
   is_answered?: boolean;
   comments_count: number;
+  founder_involved: boolean;
   html_url: string;
   summary_attempts: number;
 }
@@ -685,6 +686,7 @@ interface RawPending {
   is_merged?: boolean;
   is_answered?: boolean;
   comments_count: number;
+  founder_involved: boolean;
   html_url: string;
   summary_attempts: number;
   repos: { name: string } | null;
@@ -713,7 +715,7 @@ export async function fetchPendingItems(
   const issues = await db
     .from('issues')
     .select(
-      'id, repo_id, number, title, body, author_login, state, comments_count, html_url, summary_attempts, repos:repo_id(name)',
+      'id, repo_id, number, title, body, author_login, state, comments_count, founder_involved, html_url, summary_attempts, repos:repo_id(name)',
     )
     .eq('summary_status', 'pending')
     .lt('summary_attempts', 5)
@@ -733,6 +735,7 @@ export async function fetchPendingItems(
       author_login: r.author_login,
       state: r.state,
       comments_count: r.comments_count,
+      founder_involved: r.founder_involved,
       html_url: r.html_url,
       summary_attempts: r.summary_attempts,
     });
@@ -741,7 +744,7 @@ export async function fetchPendingItems(
   const prs = await db
     .from('pull_requests')
     .select(
-      'id, repo_id, number, title, body, author_login, state, is_merged, comments_count, html_url, summary_attempts, repos:repo_id(name)',
+      'id, repo_id, number, title, body, author_login, state, is_merged, comments_count, founder_involved, html_url, summary_attempts, repos:repo_id(name)',
     )
     .eq('summary_status', 'pending')
     .lt('summary_attempts', 5)
@@ -762,6 +765,7 @@ export async function fetchPendingItems(
       state: r.state,
       is_merged: r.is_merged,
       comments_count: r.comments_count,
+      founder_involved: r.founder_involved,
       html_url: r.html_url,
       summary_attempts: r.summary_attempts,
     });
@@ -770,7 +774,7 @@ export async function fetchPendingItems(
   const disc = await db
     .from('discussions')
     .select(
-      'id, repo_id, number, title, body, author_login, is_answered, comments_count, html_url, summary_attempts, repos:repo_id(name)',
+      'id, repo_id, number, title, body, author_login, is_answered, comments_count, founder_involved, html_url, summary_attempts, repos:repo_id(name)',
     )
     .eq('summary_status', 'pending')
     .lt('summary_attempts', 5)
@@ -791,6 +795,7 @@ export async function fetchPendingItems(
       state: 'open', // discussions don't carry a state column in our schema
       is_answered: r.is_answered,
       comments_count: r.comments_count,
+      founder_involved: r.founder_involved,
       html_url: r.html_url,
       summary_attempts: r.summary_attempts,
     });
@@ -924,6 +929,36 @@ export async function writeItemSummary(
   }
   const { error } = await db.from(table).update(update).eq('id', itemId);
   if (error) throw new Error(`writeItemSummary ${kind}/${itemId}: ${error.message}`);
+}
+
+export async function markItemSkipped(
+  db: SupabaseClient,
+  kind: 'issue' | 'pull_request' | 'discussion',
+  itemId: number,
+  snapshot: {
+    comments_count: number;
+    state: string;
+    is_merged?: boolean;
+    is_answered?: boolean;
+  },
+): Promise<void> {
+  const table = kind === 'issue' ? 'issues' : kind === 'pull_request' ? 'pull_requests' : 'discussions';
+  const update: Record<string, unknown> = {
+    summary_status: 'skipped',
+    summarized_at: new Date().toISOString(),
+    last_summarized_comment_count: snapshot.comments_count,
+  };
+  if (kind === 'issue' || kind === 'pull_request') {
+    update.last_summarized_state = snapshot.state;
+  }
+  if (kind === 'pull_request') {
+    update.last_summarized_is_merged = snapshot.is_merged ?? false;
+  }
+  if (kind === 'discussion') {
+    update.last_summarized_is_answered = snapshot.is_answered ?? false;
+  }
+  const { error } = await db.from(table).update(update).eq('id', itemId);
+  if (error) throw new Error(`markItemSkipped ${kind}/${itemId}: ${error.message}`);
 }
 
 export async function markItemError(

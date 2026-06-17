@@ -187,10 +187,14 @@ export function ThreadPage() {
       <div className="consensus-block">
         <div className="label">
           <AITag status={t.summaryStatus} />
-          <span>Conversation consensus</span>
+          <span>
+            {t.summaryStatus === 'skipped' ? 'GitHub description' : 'Conversation consensus'}
+          </span>
         </div>
         {t.summary ? (
           <h2>{t.summary}</h2>
+        ) : t.summaryStatus === 'skipped' ? (
+          <h2 style={{ color: 'var(--ink-4)' }}>No description provided.</h2>
         ) : (
           <h2 style={{ color: 'var(--ink-4)' }}>
             Summary publishing on the next refresh — check back shortly.

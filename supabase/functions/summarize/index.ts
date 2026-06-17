@@ -5,6 +5,7 @@ import {
   fetchPendingItems,
   fetchPendingReleases,
   markItemError,
+  markItemSkipped,
   markReleaseError,
   markReleaseSkipped,
   recordLlmCall,
@@ -35,6 +36,7 @@ const MODEL_RELEASE = Deno.env.get('OPENAI_MODEL_RELEASE') ?? 'gpt-4o-mini';
 const MODEL_ORG = Deno.env.get('OPENAI_MODEL_ORG') ?? 'gpt-4o';
 const ITEM_LIMIT = Number(Deno.env.get('SUMMARIZE_ITEM_LIMIT') ?? '50');
 const RELEASE_LIMIT = Number(Deno.env.get('SUMMARIZE_RELEASE_LIMIT') ?? '20');
+const ITEM_MIN_COMMENTS = Math.max(0, Number(Deno.env.get('SUMMARIZE_MIN_COMMENTS') ?? '3'));
 // Bounded parallelism for per-item + release summaries. Default 5 keeps us
 // safely under OpenAI Tier 1 rate limits (200k TPM gpt-4o-mini ≈ 60-80 RPM at
 // our average prompt size). Bump for higher tiers; lower for safety.
@@ -116,6 +118,7 @@ Deno.serve(async (req) => {
   const result = {
     run_id: run.id,
     items_summarized: 0,
+    items_skipped: 0,
     items_errored: 0,
     releases_summarized: 0,
     releases_skipped: 0,
@@ -130,6 +133,16 @@ Deno.serve(async (req) => {
     `[summarize] ${pendingItems.length} pending items, concurrency ${ITEM_CONCURRENCY}`,
   );
   await pool(pendingItems, ITEM_CONCURRENCY, async (item) => {
+    if (isItemNoise(item)) {
+      await markItemSkipped(db, item.kind, item.id, {
+        comments_count: item.comments_count,
+        state: item.state,
+        is_merged: item.is_merged,
+        is_answered: item.is_answered,
+      });
+      result.items_skipped++;
+      return;
+    }
     try {
       const cost = await summarizeOneItem(db, openai, run.id, item);
       result.items_summarized++;
@@ -570,6 +583,26 @@ async function loadFounderActivity(
     });
   }
   return flat.slice(0, 10);
+}
+
+const BOT_LOGINS = new Set([
+  'dependabot',
+  'dependabot-preview',
+  'renovate',
+  'github-actions',
+  'codecov',
+  'mergify',
+]);
+
+function isBotLogin(login: string | null): boolean {
+  const l = (login ?? '').toLowerCase();
+  return /\[bot\]$/.test(l) || BOT_LOGINS.has(l);
+}
+
+function isItemNoise(item: PendingItem): boolean {
+  if (item.founder_involved) return false;
+  if (isBotLogin(item.author_login)) return true;
+  return item.comments_count < ITEM_MIN_COMMENTS;
 }
 
 /**

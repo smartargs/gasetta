@@ -313,9 +313,10 @@ export function FounderMark({
   );
 }
 
-export type SummaryStatus = 'done' | 'pending' | 'error';
+export type SummaryStatus = 'done' | 'pending' | 'error' | 'skipped';
 
 export function AITag({ status = 'done' }: { status?: SummaryStatus }) {
+  if (status === 'skipped') return null;
   if (status === 'pending') {
     return (
       <span className="ai-tag pending" title="Summary will publish on the next refresh.">

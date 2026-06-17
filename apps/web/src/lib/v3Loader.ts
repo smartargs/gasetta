@@ -248,6 +248,16 @@ function scoreForThread(
 
 // ── transformers ────────────────────────────────────────────────────────────
 
+function itemSummaryText(
+  summary: string | null,
+  status: string | null,
+  body: string | null,
+): string {
+  if (summary) return summary;
+  if (status === 'skipped') return body?.slice(0, 240) ?? '';
+  return '';
+}
+
 function toIssueThread(i: DbIssue): Thread {
   const version = classifyVersion(i.title, i.labels);
   const founderLogin = i.founder_involved ? guessFounderLogin(i.founder_quotes) : null;
@@ -257,7 +267,7 @@ function toIssueThread(i: DbIssue): Thread {
     repo: i.repos?.name ?? 'unknown',
     number: i.number,
     title: i.title,
-    summary: i.summary ?? '',
+    summary: itemSummaryText(i.summary, i.summary_status, i.body),
     state: i.state,
     consensusChip: i.consensus_chip,
     sentiment: i.sentiment,
@@ -296,7 +306,7 @@ function toPrThread(p: DbPr): Thread {
     repo: p.repos?.name ?? 'unknown',
     number: p.number,
     title: p.title,
-    summary: p.summary ?? '',
+    summary: itemSummaryText(p.summary, p.summary_status, p.body),
     state: p.state,
     consensusChip: p.consensus_chip,
     sentiment: p.sentiment,
@@ -340,7 +350,7 @@ function toDiscussionThread(d: DbDiscussion): Thread {
     repo: d.repos?.name ?? 'unknown',
     number: d.number,
     title: d.title,
-    summary: d.summary ?? '',
+    summary: itemSummaryText(d.summary, d.summary_status, d.body),
     state: 'open',
     consensusChip: d.consensus_chip,
     sentiment: d.sentiment,
