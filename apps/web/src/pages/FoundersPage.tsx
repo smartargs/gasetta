@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
-import { FounderMark, Icon } from '../components/atoms';
+import { usePageMeta } from '../lib/usePageMeta';
+import { FounderMark, Icon, ShareMenu } from '../components/atoms';
 import { Markdown, type ResolveIssueRef } from '../components/Markdown';
 
 const PAGE_SIZE = 15;
+
+type FounderTab = 'all' | 'erikzhang' | 'dahongfei';
+const FOUNDER_LABEL: Record<Exclude<FounderTab, 'all'>, string> = {
+  erikzhang: 'Erik Zhang',
+  dahongfei: 'Da Hongfei',
+};
 
 export function FoundersPage() {
   const D = useGasettaV3();
@@ -14,8 +21,30 @@ export function FoundersPage() {
     const match = D.threads.find((x) => x.repo === repo && x.number === num);
     return match ? `/threads/${encodeURIComponent(match.id)}` : null;
   };
-  const [tab, setTab] = useState<'all' | 'erikzhang' | 'dahongfei'>('all');
+  const [params, setParams] = useSearchParams();
+  const tabParam = params.get('founder');
+  const tab: FounderTab =
+    tabParam === 'erikzhang' || tabParam === 'dahongfei' ? tabParam : 'all';
+  const setTab = (next: FounderTab) => {
+    const p = new URLSearchParams(params);
+    if (next === 'all') p.delete('founder');
+    else p.set('founder', next);
+    setParams(p, { replace: true });
+  };
   const items = D.founderActivity.filter((a) => tab === 'all' || a.login === tab);
+
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const shareText =
+    tab === 'all'
+      ? `What Neo's founders are saying and shipping across GitHub — tracked live on Gasetta.`
+      : `${FOUNDER_LABEL[tab]}'s recent activity across Neo's GitHub — tracked live on Gasetta.`;
+  usePageMeta({
+    title:
+      tab === 'all'
+        ? 'Founder activity · Gasetta'
+        : `${FOUNDER_LABEL[tab]} · Founder activity · Gasetta`,
+    description: shareText,
+  });
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   useEffect(() => {
@@ -36,16 +65,19 @@ export function FoundersPage() {
             recent.
           </div>
         </div>
-        <div className="tab-strip">
-          <button aria-pressed={tab === 'all'} onClick={() => setTab('all')}>
-            All
-          </button>
-          <button aria-pressed={tab === 'erikzhang'} onClick={() => setTab('erikzhang')}>
-            Erik Zhang
-          </button>
-          <button aria-pressed={tab === 'dahongfei'} onClick={() => setTab('dahongfei')}>
-            Da Hongfei
-          </button>
+        <div className="founders-head-actions">
+          <div className="tab-strip">
+            <button aria-pressed={tab === 'all'} onClick={() => setTab('all')}>
+              All
+            </button>
+            <button aria-pressed={tab === 'erikzhang'} onClick={() => setTab('erikzhang')}>
+              Erik Zhang
+            </button>
+            <button aria-pressed={tab === 'dahongfei'} onClick={() => setTab('dahongfei')}>
+              Da Hongfei
+            </button>
+          </div>
+          <ShareMenu url={shareUrl} text={shareText} />
         </div>
       </div>
       {items.length === 0 ? (

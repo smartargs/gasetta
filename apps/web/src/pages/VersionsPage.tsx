@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useGasettaV3, useGasettaLoading } from '../lib/v3Context';
-import { Icon, VersionChip } from '../components/atoms';
+import { usePageMeta } from '../lib/usePageMeta';
+import { Icon, ShareMenu, VersionChip } from '../components/atoms';
 
 function statusClass(s: string): string {
   const k = s.toLowerCase();
@@ -21,6 +22,16 @@ export function VersionsPage() {
   const total = VA.n3.total + VA.n4.total;
   const n4pct = total === 0 ? 50 : Math.round((VA.n4.total / total) * 100);
   const n3pct = 100 - n4pct;
+
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const shareText =
+    total > 0
+      ? `Where Neo dev activity is going right now: N4 ${n4pct}% vs N3 ${n3pct}% (${total} items classified). Tracked live on Gasetta.`
+      : `N3 vs N4 — a live read of where Neo development effort is going right now. Tracked on Gasetta.`;
+  usePageMeta({
+    title: 'N3 vs N4 — Neo activity split · Gasetta',
+    description: shareText,
+  });
 
   if (isLoading && total === 0 && D.n4Features.length === 0) {
     return (
@@ -81,7 +92,10 @@ export function VersionsPage() {
       </Link>
 
       <div className="versions-hero">
-        <h1>N3 and N4 — what's going on</h1>
+        <div className="versions-hero-head">
+          <h1>N3 and N4 — what's going on</h1>
+          <ShareMenu url={shareUrl} text={shareText} />
+        </div>
         <p className="sub">
           A live read of where development effort is going right now, and what's new in N4.
         </p>

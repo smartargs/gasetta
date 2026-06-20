@@ -1615,6 +1615,13 @@ button{ font-family: inherit; }
   padding: 22px 24px;
   margin-bottom: 18px;
 }
+.versions-hero-head{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 .versions-hero h1{
   margin: 0 0 4px;
   font-size: 26px;
@@ -1761,6 +1768,7 @@ button{ font-family: inherit; }
 }
 .founders-head h1{ margin: 0; font-size: 22px; color: var(--ink); font-weight: 600; letter-spacing: -0.01em; }
 .founders-head .sub{ font-size: 13px; color: var(--ink-3); }
+.founders-head-actions{ display:flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .tab-strip{ display:flex; gap: 4px; }
 .tab-strip button{
   appearance:none; background: transparent; border:0;
